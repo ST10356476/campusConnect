@@ -7,6 +7,7 @@ interface User {
   name: string;
   email: string;
   avatar?: string;
+  badge?: string;
   badges: string[];
   points: number;
 }

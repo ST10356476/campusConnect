@@ -1,4 +1,3 @@
-// src/components/auth/AuthModal.tsx
 import React, { useState } from 'react';
 import { X, Eye, EyeOff, Loader2, GraduationCap, Mail, Lock, User, Building, BookOpen, Calendar } from 'lucide-react';
 

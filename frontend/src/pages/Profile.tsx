@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Edit, Camera, MapPin, Calendar, Mail, Users, BookOpen, Award, Settings } from 'lucide-react';
+import { Dispatch, SetStateAction } from "react";
 
 interface User {
   id: string;
@@ -11,78 +12,91 @@ interface User {
 }
 
 interface ProfileProps {
-  user: User;
-  setUser: (user: User) => void;
+  user: User | null;
+  setUser: Dispatch<SetStateAction<User | null>>;
 }
 
 export function Profile({ user, setUser }: ProfileProps) {
   const [isEditing, setIsEditing] = useState(false);
+
+  // Initialize edit form with default values if user is null
   const [editForm, setEditForm] = useState({
-    name: user.name,
-    bio: 'Passionate learner exploring web development and computer science. Love collaborating with others and sharing knowledge!',
-    location: 'San Francisco, CA',
-    interests: ['React', 'JavaScript', 'Machine Learning', 'Computer Science'],
-    joinedDate: '2024-01-01'
+    name: user?.name || '',
+    bio: '',
+    location: '',
+    interests: [] as string[],
+    joinedDate: new Date().toISOString().split('T')[0],
   });
 
+  const handleSaveProfile = () => {
+    if (!user) {
+      // Create new user profile
+      const newUser: User = {
+        id: Math.random().toString(36).substr(2, 9),
+        name: editForm.name,
+        email: 'user@example.com', // Replace with actual email input if needed
+        avatar: undefined,
+        badges: [],
+        points: 0,
+      };
+      setUser(newUser);
+    } else {
+      // Update existing user
+      setUser({
+        ...user,
+        name: editForm.name,
+        // you can extend to update bio, location, interests
+      });
+    }
+    setIsEditing(false);
+  };
+
+  const handleAvatarChange = () => {
+    console.log('Avatar change requested');
+  };
+
+  if (!user) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <h1 className="text-2xl text-gray-900 mb-4">Create Your Profile</h1>
+        <input
+          type="text"
+          placeholder="Your Name"
+          value={editForm.name}
+          onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+          className="border border-gray-300 rounded px-3 py-2 mb-4"
+        />
+        <button
+          onClick={handleSaveProfile}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          Save Profile
+        </button>
+      </div>
+    );
+  }
+
+  // Stats, achievements, and recent activity
   const stats = [
     { label: 'Questions Asked', value: 12, icon: BookOpen },
     { label: 'Communities Joined', value: 5, icon: Users },
     { label: 'Meetups Attended', value: 8, icon: Calendar },
-    { label: 'Achievement Points', value: user.points, icon: Award }
-  ];
-
-  const recentActivity = [
-    {
-      id: 1,
-      type: 'question',
-      content: 'Asked: "How to optimize React rendering performance?"',
-      community: 'React Developers',
-      time: '2 hours ago'
-    },
-    {
-      id: 2,
-      type: 'meetup',
-      content: 'Attended: Algorithm Study Group',
-      community: 'Computer Science',
-      time: '1 day ago'
-    },
-    {
-      id: 3,
-      type: 'material',
-      content: 'Shared: Data Structures Cheat Sheet',
-      community: 'Computer Science',
-      time: '3 days ago'
-    },
-    {
-      id: 4,
-      type: 'achievement',
-      content: 'Earned: Helpful Member badge',
-      community: 'Achievement',
-      time: '1 week ago'
-    }
+    { label: 'Achievement Points', value: user.points, icon: Award },
   ];
 
   const achievements = [
     { id: 1, name: 'First Question', icon: '🎯', color: 'bg-blue-100 text-blue-700' },
     { id: 2, name: 'Helpful Member', icon: '⭐', color: 'bg-yellow-100 text-yellow-700' },
     { id: 3, name: 'Early Bird', icon: '🌅', color: 'bg-orange-100 text-orange-700' },
-    { id: 4, name: 'Study Buddy', icon: '👥', color: 'bg-green-100 text-green-700' }
+    { id: 4, name: 'Study Buddy', icon: '👥', color: 'bg-green-100 text-green-700' },
   ];
 
-  const handleSaveProfile = () => {
-    // In a real app, this would make an API call to update the profile
-    setUser({
-      ...user,
-      name: editForm.name
-    });
-    setIsEditing(false);
-  };
-
-  const handleAvatarChange = () => {
-    // In a real app, this would open a file picker and upload the image
-    console.log('Avatar change requested');
-  };
+  const recentActivity = [
+    { id: 1, type: 'question', content: 'Asked: "How to optimize React rendering performance?"', community: 'React Developers', time: '2 hours ago' },
+    { id: 2, type: 'meetup', content: 'Attended: Algorithm Study Group', community: 'Computer Science', time: '1 day ago' },
+    { id: 3, type: 'material', content: 'Shared: Data Structures Cheat Sheet', community: 'Computer Science', time: '3 days ago' },
+    { id: 4, type: 'achievement', content: 'Earned: Helpful Member badge', community: 'Achievement', time: '1 week ago' },
+  ];
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -110,19 +124,19 @@ export function Profile({ user, setUser }: ProfileProps) {
                   <input
                     type="text"
                     value={editForm.name}
-                    onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                     className="text-2xl border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <textarea
                     value={editForm.bio}
-                    onChange={(e) => setEditForm({...editForm, bio: e.target.value})}
+                    onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
                     rows={3}
                     className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <input
                     type="text"
                     value={editForm.location}
-                    onChange={(e) => setEditForm({...editForm, location: e.target.value})}
+                    onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
                     className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Location"
                   />
@@ -130,18 +144,15 @@ export function Profile({ user, setUser }: ProfileProps) {
               ) : (
                 <div>
                   <h1 className="text-3xl text-gray-900 mb-2">{user.name}</h1>
-                  <p className="text-gray-600 mb-4">{editForm.bio}</p>
+                  <p className="text-gray-600 mb-4">{editForm.bio || 'No bio provided yet.'}</p>
                   <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
                     <div className="flex items-center space-x-1">
                       <MapPin className="w-4 h-4" />
-                      <span>{editForm.location}</span>
+                      <span>{editForm.location || 'Location not set'}</span>
                     </div>
                     <div className="flex items-center space-x-1">
                       <Calendar className="w-4 h-4" />
-                      <span>Joined {new Date(editForm.joinedDate).toLocaleDateString('en-US', { 
-                        month: 'long', 
-                        year: 'numeric' 
-                      })}</span>
+                      <span>Joined {new Date(editForm.joinedDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
                     </div>
                     <div className="flex items-center space-x-1">
                       <Mail className="w-4 h-4" />
@@ -189,14 +200,15 @@ export function Profile({ user, setUser }: ProfileProps) {
           <div className="mt-6">
             <h3 className="text-sm text-gray-700 mb-2">Interests</h3>
             <div className="flex flex-wrap gap-2">
-              {editForm.interests.map((interest) => (
-                <span
-                  key={interest}
-                  className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm"
-                >
-                  {interest}
-                </span>
-              ))}
+              {editForm.interests.length > 0 ? (
+                editForm.interests.map((interest) => (
+                  <span key={interest} className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
+                    {interest}
+                  </span>
+                ))
+              ) : (
+                <span className="text-gray-400 text-sm">No interests added yet.</span>
+              )}
             </div>
           </div>
         </div>
@@ -221,94 +233,45 @@ export function Profile({ user, setUser }: ProfileProps) {
           })}
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Achievements */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl text-gray-900 mb-4">Recent Achievements</h2>
-              <div className="space-y-4">
-                {achievements.map((achievement) => (
-                  <div key={achievement.id} className="flex items-center space-x-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${achievement.color}`}>
-                      <span className="text-lg">{achievement.icon}</span>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-900">{achievement.name}</p>
-                    </div>
-                  </div>
-                ))}
+        {/* Achievements */}
+        <div className="lg:col-span-1 bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+          <h2 className="text-xl text-gray-900 mb-4">Achievements</h2>
+          <div className="space-y-4">
+            {achievements.map((achievement) => (
+              <div key={achievement.id} className="flex items-center space-x-3">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${achievement.color}`}>
+                  <span className="text-lg">{achievement.icon}</span>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-900">{achievement.name}</p>
+                </div>
               </div>
-              <button className="w-full mt-4 text-blue-600 hover:text-blue-700 text-sm transition-colors">
-                View All Achievements
-              </button>
-            </div>
-          </div>
-
-          {/* Recent Activity */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl text-gray-900 mb-4">Recent Activity</h2>
-              <div className="space-y-4">
-                {recentActivity.map((activity) => {
-                  const getActivityIcon = () => {
-                    switch (activity.type) {
-                      case 'question': return BookOpen;
-                      case 'meetup': return Calendar;
-                      case 'material': return BookOpen;
-                      case 'achievement': return Award;
-                      default: return BookOpen;
-                    }
-                  };
-                  const Icon = getActivityIcon();
-                  
-                  return (
-                    <div key={activity.id} className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                      <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Icon className="w-4 h-4 text-gray-600" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-900">{activity.content}</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <span className="text-xs text-gray-500">{activity.community}</span>
-                          <span className="text-xs text-gray-400">•</span>
-                          <span className="text-xs text-gray-500">{activity.time}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 
-        {/* Communities */}
-        <div className="mt-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl text-gray-900 mb-4">My Communities</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[
-                { name: 'React Developers', members: '2.3K', role: 'Member', avatar: '⚛️' },
-                { name: 'Computer Science', members: '1.8K', role: 'Active Member', avatar: '🖥️' },
-                { name: 'Mathematics', members: '980', role: 'Member', avatar: '📐' },
-                { name: 'Machine Learning', members: '3.2K', role: 'New Member', avatar: '🤖' },
-                { name: 'Backend Development', members: '1.6K', role: 'Member', avatar: '⚙️' }
-              ].map((community, index) => (
-                <div key={index} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg">
-                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-xl">
-                    {community.avatar}
+        {/* Recent Activity */}
+        <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h2 className="text-xl text-gray-900 mb-4">Recent Activity</h2>
+          <div className="space-y-4">
+            {recentActivity.map((activity) => {
+              const Icon = activity.type === 'achievement' ? Award : BookOpen;
+              return (
+                <div key={activity.id} className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-4 h-4 text-gray-600" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm text-gray-900">{community.name}</p>
-                    <div className="flex items-center space-x-2 text-xs text-gray-500">
-                      <span>{community.members} members</span>
-                      <span>•</span>
-                      <span>{community.role}</span>
+                    <p className="text-sm text-gray-900">{activity.content}</p>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <span className="text-xs text-gray-500">{activity.community}</span>
+                      <span className="text-xs text-gray-400">•</span>
+                      <span className="text-xs text-gray-500">{activity.time}</span>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
       </div>

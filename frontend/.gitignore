@@ -1,0 +1,37 @@
+# Node modules
+node_modules/
+
+# Production build
+build/
+dist/
+.next/
+out/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS / Editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Optional cache folders
+.cache/
+.parcel-cache/
+.npm
+.eslintcache
+.stylelintcache
+
+# Testing
+coverage/

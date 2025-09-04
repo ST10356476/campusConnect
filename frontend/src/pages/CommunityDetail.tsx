@@ -608,7 +608,7 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
                                   <button
                                     onClick={() => handleReply(post.id)}
                                     disabled={!replyForm.content.trim() || replyForm.postId !== post.id}
-                                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="bg-purple-600 text-gray-600 px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                   >
                                     Reply
                                   </button>
@@ -691,7 +691,7 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
               </button>
               <button
                 onClick={handleCreatePost}
-                className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                className="bg-purple-600 text-gray-600 px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors"
               >
                 Create Post
               </button>

@@ -71,12 +71,25 @@ export function Communities({ user }: CommunitiesProps) {
       const response = await apiService.getCommunities(params);
       
       if (response.success) {
+        console.log('API Response communities:', response.communities); // Debug log
         setCommunities(response.communities || []);
         
-        // Filter joined communities
-        const joined = response.communities?.filter((community: Community) =>
-          community.members.some(member => member.user === user.id)
-        ) || [];
+        // Fix: Check both user ID formats and nested user objects with proper typing
+        const joined = response.communities?.filter((community: any) => {
+          const isMember = community.members?.some((member: any) => {
+            // Handle different member user formats
+            const memberUserId = typeof member.user === 'string' 
+              ? member.user 
+              : member.user?._id || member.user?.id;
+            
+            return memberUserId === user.id;
+          });
+          
+          console.log(`Community ${community.name} - isMember:`, isMember); // Debug log
+          return isMember;
+        }) || [];
+        
+        console.log('Joined communities:', joined); // Debug log
         setJoinedCommunities(joined);
       }
     } catch (error) {
@@ -96,10 +109,45 @@ export function Communities({ user }: CommunitiesProps) {
     try {
       setLoading(true);
       
+      // Validate required fields
+      if (!createForm.name.trim()) {
+        alert('Community name is required');
+        return;
+      }
+      
+      if (createForm.name.trim().length < 3) {
+        alert('Community name must be at least 3 characters');
+        return;
+      }
+      
+      if (!createForm.description.trim()) {
+        alert('Description is required');
+        return;
+      }
+      
+      if (createForm.description.trim().length < 10) {
+        alert('Description must be at least 10 characters');
+        return;
+      }
+      
+      if (!createForm.university.trim()) {
+        alert('University is required');
+        return;
+      }
+      
+      // Properly format the data
       const communityData = {
-        ...createForm,
-        tags: createForm.tags.split(',').map(tag => tag.trim()).filter(Boolean)
+        name: createForm.name.trim(),
+        description: createForm.description.trim(),
+        category: createForm.category,
+        isPrivate: createForm.isPrivate,
+        maxMembers: parseInt(createForm.maxMembers.toString()) || 50,
+        tags: createForm.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+        university: createForm.university.trim(),
+        course: createForm.course.trim() || undefined
       };
+
+      console.log('Creating community with data:', communityData); // Debug log
       
       const response = await apiService.createCommunity(communityData);
       
@@ -118,6 +166,7 @@ export function Communities({ user }: CommunitiesProps) {
         
         // Refresh communities
         await fetchCommunities();
+        alert('Community created successfully!');
       }
     } catch (error: any) {
       console.error('Failed to create community:', error);
@@ -130,6 +179,7 @@ export function Communities({ user }: CommunitiesProps) {
   // Join community
   const handleJoinCommunity = async (communityId: string) => {
     try {
+      console.log('Joining community with ID:', communityId); // Debug log
       const response = await apiService.joinCommunity(communityId);
       
       if (response.success) {
@@ -158,8 +208,13 @@ export function Communities({ user }: CommunitiesProps) {
   };
 
   // Check if user is member of community
-  const isMemberOfCommunity = (community: Community) => {
-    return community.members.some(member => member.user === user.id);
+  const isMemberOfCommunity = (community: any) => {
+    return community.members?.some((member: any) => {
+      const memberUserId = typeof member.user === 'string' 
+        ? member.user 
+        : member.user?._id || member.user?.id;
+      return memberUserId === user.id;
+    });
   };
 
   // Get display name for user

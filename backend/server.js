@@ -23,6 +23,12 @@ const io = new Server(server, {
 // Connect to MongoDB
 connectDB();
 
+require('./src/models/User');
+require('./src/models/Community');
+require('./src/models/CommunityPost');
+require('./src/models/Achievement');
+
+
 // Middleware
 app.use(helmet());
 app.use(cors({

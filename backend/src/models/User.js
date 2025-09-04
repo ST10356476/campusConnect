@@ -75,9 +75,15 @@ const UserSchema = new mongoose.Schema({
     ref: 'Community'
   }],
   achievements: [{
+  achievement: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Achievement'
-  }],
+  },
+  earnedAt: {
+    type: Date,
+    default: Date.now
+  }
+}],
   points: {
     type: Number,
     default: 0

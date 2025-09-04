@@ -49,4 +49,8 @@ const CommunityPostSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Index for better query performance
+CommunityPostSchema.index({ community: 1, createdAt: -1 });
+CommunityPostSchema.index({ community: 1, isPinned: -1, createdAt: -1 });
+
 module.exports = mongoose.model('CommunityPost', CommunityPostSchema);

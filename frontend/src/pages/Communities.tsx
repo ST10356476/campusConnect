@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Users, MessageSquare, Plus, Search, Filter, Heart, MessageCircle, Share2 } from 'lucide-react';
 import { apiService, User, Community } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 
 interface CommunitiesProps {
   user: User;
 }
 
 export function Communities({ user }: CommunitiesProps) {
+  const navigate = useNavigate();
+  
   const [activeTab, setActiveTab] = useState<'discover' | 'joined' | 'posts'>('discover');
   const [showQuestionModal, setShowQuestionModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);

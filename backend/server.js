@@ -4,7 +4,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
-const connectDB = require('./src/config/database');
+const  connectDB  = require('./src/config/database');
 require('dotenv').config();
 
 const app = express();
@@ -19,6 +19,7 @@ const io = new Server(server, {
     methods: ["GET", "POST"]
   }
 });
+
 // Connect to MongoDB
 connectDB();
 

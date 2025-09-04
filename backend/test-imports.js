@@ -1,4 +1,4 @@
-// test-imports.js - Fixed version
+// test-imports.js for logging correct routes paths
 try {
   console.log('Testing database import...');
   const connectDB = require('./src/config/database');
@@ -21,7 +21,7 @@ try {
   console.log('Auth controller import: OK');
   
   console.log('Testing auth routes import...');
-  const authRoutes = require('./routes/auth');  // Changed from ../src/routes/auth
+  const authRoutes = require('./routes/auth');  
   console.log('Auth routes import: OK');
   
   console.log('All imports successful!');

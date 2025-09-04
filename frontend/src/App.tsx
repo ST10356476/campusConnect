@@ -11,6 +11,7 @@ import { Achievements } from './components/profile/Achievements';
 import { LiveSession } from './components/live-session/LiveSession';
 import { apiService, User } from './services/api';
 import { webSocketService } from './services/websocket.service';
+import { CommunityDetail } from './pages/CommunityDetail';
 
 interface AuthContextType {
   user: User | null;

@@ -1,3 +1,4 @@
+console.log('>>> BOOTING:', __filename);
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -28,6 +29,8 @@ require('./src/models/User');
 require('./src/models/Community');
 require('./src/models/CommunityPost');
 require('./src/models/Achievement');
+require('./src/models/Meetup');
+
 
 // Middleware
 app.use(helmet({
@@ -59,6 +62,21 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
+// Routes
+
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/communities', require('./routes/communities'));
+app.use('/api/posts', require('./routes/posts'));
+
+try {
+  console.log('Attempting to load meetup route...');
+  const meetupRoute = require('./routes/meetup');
+  console.log('Meetup route loaded successfully');
+  app.use('/api/meetups', meetupRoute);
+} catch (error) {
+  console.error('FAILED to load meetup route:', error.message);
+  console.error('Full error:', error);
+
 // Enhanced logging middleware for debugging
 app.use('/api', (req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
@@ -76,6 +94,7 @@ try {
   console.log('All routes loaded successfully');
 } catch (error) {
   console.error('Error loading routes:', error);
+
 }
 
 // Health check

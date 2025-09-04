@@ -76,6 +76,7 @@ try {
 } catch (error) {
   console.error('FAILED to load meetup route:', error.message);
   console.error('Full error:', error);
+}
 
 // Enhanced logging middleware for debugging
 app.use('/api', (req, res, next) => {

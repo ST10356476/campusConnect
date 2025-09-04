@@ -68,6 +68,11 @@ const CommunitySchema = new mongoose.Schema({
     type: String,
     trim: true
   }],
+
+  posts: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CommunityPost'
+  }],
   university: {
     type: String,
     required: [true, 'Please provide university']
@@ -76,7 +81,13 @@ const CommunitySchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
-  }
+  },
+
+  settings: {
+    allowPosts: { type: Boolean, default: true },
+    requireApproval: { type: Boolean, default: false },
+    allowFiles: { type: Boolean, default: true }
+  }  
 }, {
   timestamps: true
 });

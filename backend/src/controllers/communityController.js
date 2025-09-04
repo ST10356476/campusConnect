@@ -247,9 +247,49 @@ const leaveCommunity = async (req, res) => {
   }
 };
 
+// @desc    Get community
+// @route   POST /api/communities/:id/get
+// @access  Private
+const getCommunityById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const community = await Community.findById(id)
+      .populate('creator', 'username profile.firstName profile.lastName profile.avatar')
+      .populate('members.user', 'username profile.firstName profile.lastName profile.avatar')
+      .populate('posts');
+
+    if (!community) {
+      return res.status(404).json({ message: 'Community not found' });
+    }
+
+    // Check if user is a member
+    const isMember = community.members.some(
+      member => member.user._id.toString() === req.user.id
+    );
+
+    res.json({
+      success: true,
+      community: {
+        ...community.toObject(),
+        id: community._id.toString(),
+        isMember
+      }
+    });
+  } catch (error) {
+    console.error('Get community by ID error:', error);
+    res.status(500).json({
+      message: 'Server error fetching community',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getCommunities,
   createCommunity,
   joinCommunity,
-  leaveCommunity
+  leaveCommunity,
+  getCommunityById, 
+  getCommunityPosts: require('./postController').getCommunityPosts
 };

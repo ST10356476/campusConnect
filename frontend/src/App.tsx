@@ -308,6 +308,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<Dashboard user={user} />} />
                 <Route path="/communities" element={<Communities user={user} />} />
+                <Route path="/communities/:communityId" element={<CommunityDetail user={user} />} />
                 <Route path="/materials" element={<StudyMaterials user={user} />} />
                 <Route path="/meetups" element={<Meetups user={user} />} />
                 <Route path="/achievements" element={<Achievements user={user} />} />

@@ -4,8 +4,10 @@ const {
   getCommunities,
   createCommunity,
   joinCommunity,
-  leaveCommunity
+  leaveCommunity,
+  getCommunityById
 } = require('../src/controllers/communityController');
+const { getCommunityPosts } = require('../src/controllers/postController');
 const { protect } = require('../src/middleware/auth');
 
 const router = express.Router();
@@ -48,5 +50,7 @@ router.get('/', protect, getCommunities);
 router.post('/', protect, communityValidation, createCommunity);
 router.post('/:id/join', protect, joinCommunity);
 router.post('/:id/leave', protect, leaveCommunity);
+router.get('/:id', protect, getCommunityById);
+router.get('/:id/posts', protect, getCommunityPosts);
 
 module.exports = router;

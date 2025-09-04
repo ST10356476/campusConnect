@@ -44,6 +44,10 @@ app.use('/api', limiter);
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/communities', require('./routes/communities'));
+app.use('/api/posts', require('./routes/posts'));
+
+
 
 // Health check
 app.get('/health', (req, res) => {

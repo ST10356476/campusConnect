@@ -218,6 +218,35 @@ class ApiService {
     });
   }
 
+  async getCommunityById(communityId: string) {
+  return this.request(`/communities/${communityId}`);
+}
+
+async getCommunityPosts(communityId: string, params: any = {}) {
+  const queryString = new URLSearchParams(params).toString();
+  return this.request(`/communities/${communityId}/posts?${queryString}`);
+}
+
+async createCommunityPost(postData: any) {
+  return this.request('/posts', {
+    method: 'POST',
+    body: JSON.stringify(postData),
+  });
+}
+
+async replyToPost(postId: string, replyData: any) {
+  return this.request(`/posts/${postId}/reply`, {
+    method: 'POST',
+    body: JSON.stringify(replyData),
+  });
+}
+
+async likePost(postId: string) {
+  return this.request(`/posts/${postId}/like`, {
+    method: 'POST',
+  });
+}
+
   // Materials methods
   async getMaterials(params: any = {}) {
     const queryString = new URLSearchParams(params).toString();

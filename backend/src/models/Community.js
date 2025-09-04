@@ -14,7 +14,7 @@ const CommunitySchema = new mongoose.Schema({
   },
   avatar: {
     type: String,
-    default: 'https://via.placeholder.com/200x200?text=Community'
+    default: null
   },
   category: {
     type: String,
@@ -68,7 +68,6 @@ const CommunitySchema = new mongoose.Schema({
     type: String,
     trim: true
   }],
-
   posts: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'CommunityPost'
@@ -77,24 +76,33 @@ const CommunitySchema = new mongoose.Schema({
     type: String,
     required: [true, 'Please provide university']
   },
-  course: String,
+  course: {
+    type: String,
+    default: null
+  },
   isActive: {
     type: Boolean,
     default: true
   },
-
   settings: {
     allowPosts: { type: Boolean, default: true },
     requireApproval: { type: Boolean, default: false },
     allowFiles: { type: Boolean, default: true }
-  }  
+  }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
 // Virtual for member count
 CommunitySchema.virtual('memberCount').get(function() {
-  return this.members.length;
+  return this.members ? this.members.length : 0;
 });
+
+// Index for better query performance
+CommunitySchema.index({ name: 1, creator: 1 });
+CommunitySchema.index({ category: 1, university: 1 });
+CommunitySchema.index({ isActive: 1, isPrivate: 1 });
 
 module.exports = mongoose.model('Community', CommunitySchema);

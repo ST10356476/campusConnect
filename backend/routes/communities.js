@@ -5,7 +5,10 @@ const {
   createCommunity,
   joinCommunity,
   leaveCommunity,
-  getCommunityById
+  getCommunityById,
+  updateCommunity,
+  deleteCommunity,
+  getCommunityMembers
 } = require('../src/controllers/communityController');
 const { getCommunityPosts } = require('../src/controllers/postController');
 const { protect } = require('../src/middleware/auth');
@@ -45,12 +48,17 @@ const communityValidation = [
     .withMessage('Max members must be between 5-500')
 ];
 
-// Routes
+// Community Routes
 router.get('/', protect, getCommunities);
 router.post('/', protect, communityValidation, createCommunity);
+router.get('/:id', protect, getCommunityById);
 router.post('/:id/join', protect, joinCommunity);
 router.post('/:id/leave', protect, leaveCommunity);
-router.get('/:id', protect, getCommunityById);
+router.put('/:id', protect, updateCommunity);
+router.delete('/:id', protect, deleteCommunity);
+router.get('/:id/members', protect, getCommunityMembers);
+
+// Community Posts Routes
 router.get('/:id/posts', protect, getCommunityPosts);
 
 module.exports = router;

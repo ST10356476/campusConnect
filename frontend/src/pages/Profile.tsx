@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import type { User } from '../services/api';
+import { apiService } from '../services/api';
 
 interface ProfileProps {
   user: User | null;
@@ -22,9 +23,11 @@ interface ProfileProps {
 export function Profile({ user, setUser }: ProfileProps) {
   const [isEditing, setIsEditing] = useState(false);
 
-  // Extract profile info
   const uProfile: any = (user as any)?.profile ?? {};
-  const displayName = (uProfile.name as string) ?? (user as any)?.username ?? '';
+  const displayName =
+    [uProfile.firstName, uProfile.lastName].filter(Boolean).join(' ') ||
+    (user as any)?.username ||
+    '';
   const displayEmail = (user as any)?.email ?? '';
   const displayAvatar =
     (uProfile.avatar as string) ||
@@ -34,7 +37,7 @@ export function Profile({ user, setUser }: ProfileProps) {
       : `https://api.dicebear.com/7.x/avataaars/svg?seed=user`);
   const displayPoints = (user as any)?.points ?? 0;
 
-  // Form state
+  // Edit form state
   const [editForm, setEditForm] = useState({
     name: displayName || '',
     bio: (uProfile.bio as string) || '',
@@ -48,8 +51,12 @@ export function Profile({ user, setUser }: ProfileProps) {
 
   useEffect(() => {
     const p: any = (user as any)?.profile ?? {};
+    const dn =
+      [p.firstName, p.lastName].filter(Boolean).join(' ') ||
+      (user as any)?.username ||
+      '';
     setEditForm({
-      name: (p.name as string) ?? (user as any)?.username ?? '',
+      name: dn,
       bio: (p.bio as string) || '',
       location: (p.location as string) || '',
       interests: ((p.interests as string[]) || []) as string[],
@@ -88,29 +95,33 @@ export function Profile({ user, setUser }: ProfileProps) {
       interests: (prev.interests || []).filter((t) => t !== tag),
     }));
 
-  // Save
-  const handleSaveProfile = () => {
+  // Save - persists to backend then trusts server response
+  const handleSaveProfile = async () => {
     if (!editForm.name.trim()) return;
 
-    setUser((prev) => {
-      if (!prev) return prev;
-      const prevProfile: any = (prev as any).profile ?? {};
-      const nextUser: User = {
-        ...prev,
-        profile: {
-          ...prevProfile,
-          name: editForm.name.trim(),
-          bio: editForm.bio || undefined,
-          location: editForm.location || undefined,
-          interests: editForm.interests || [],
-          avatar: editForm.avatar || undefined,
-          joinedDate: editForm.joinedDate || prevProfile.joinedDate,
-        },
-      } as User;
-      return nextUser;
-    });
+    const parts = editForm.name.trim().split(/\s+/);
+    const firstName = parts.shift() || '';
+    const lastName = parts.join(' ');
 
-    setIsEditing(false);
+    const payload = {
+      firstName,
+      lastName,
+      bio: editForm.bio || undefined,
+      location: editForm.location || undefined,
+      interests: editForm.interests || [],
+      avatar: editForm.avatar || undefined,
+      joinedDate: editForm.joinedDate || undefined
+    };
+
+    try {
+      const res = await apiService.updateProfile(payload);
+      if (res.success && res.user) {
+        setUser(res.user);
+        setIsEditing(false);
+      }
+    } catch (e) {
+      console.error('Update failed:', e);
+    }
   };
 
   if (!user) {
@@ -134,7 +145,6 @@ export function Profile({ user, setUser }: ProfileProps) {
     );
   }
 
-  // Static cards
   const stats = [
     { label: 'Questions Asked', value: 12, icon: BookOpen },
     { label: 'Communities Joined', value: 5, icon: Users },

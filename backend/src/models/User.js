@@ -47,6 +47,11 @@ const UserSchema = new mongoose.Schema({
       type: String,
       maxlength: [500, 'Bio cannot exceed 500 characters']
     },
+
+    // Added for the Profile screen
+    location: { type: String, trim: true },
+    joinedDate: { type: String }, // ISO string as used by the UI
+
     university: {
       type: String,
       required: [true, 'Please provide university name']
@@ -75,15 +80,15 @@ const UserSchema = new mongoose.Schema({
     ref: 'Community'
   }],
   achievements: [{
-  achievement: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Achievement'
-  },
-  earnedAt: {
-    type: Date,
-    default: Date.now
-  }
-}],
+    achievement: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Achievement'
+    },
+    earnedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   points: {
     type: Number,
     default: 0
@@ -103,10 +108,11 @@ const UserSchema = new mongoose.Schema({
 // Hash password before saving
 UserSchema.pre('save', async function(next) {
   if (!this.isModified('password')) {
-    next();
+    return next();
   }
   const salt = await bcrypt.genSalt(12);
   this.password = await bcrypt.hash(this.password, salt);
+  next();
 });
 
 // Compare password

@@ -1,8 +1,24 @@
-// backend/src/controllers/meetupController.js
 console.log('=== LOADING MEETUP CONTROLLER ===');
 const Meetup = require('../models/Meetup');
 console.log('✅ Meetup model loaded successfully');
 console.log('=== CONTROLLER LOADED ===');
+
+// helper: build Date from strings like "2025-09-11" + "14:30"
+function computeStartAt(dateStr, timeStr) {
+  if (!dateStr || !timeStr) return null;
+  // Node parses "YYYY-MM-DDTHH:mm:00" as local time, which is fine for now
+  const d = new Date(`${dateStr}T${timeStr}:00`);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+// helper: for legacy docs with no startAt
+function ensureStartAt(doc) {
+  if (!doc.startAt) {
+    const computed = computeStartAt(doc.date, doc.time);
+    if (computed) doc.startAt = computed;
+  }
+  return doc;
+}
 
 // Create a new meetup
 exports.createMeetup = async (req, res) => {
@@ -13,11 +29,14 @@ exports.createMeetup = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
+    const startAt = computeStartAt(date, time);
+
     const meetup = await Meetup.create({
       title,
       description,
       date,
       time,
+      startAt,                                   // save it
       duration: Number(duration) || 60,
       maxAttendees: Number(maxAttendees) || 10,
       meetingLink,
@@ -31,24 +50,39 @@ exports.createMeetup = async (req, res) => {
   }
 };
 
-// Get all upcoming meetups
+// Get all upcoming meetups (hide anything older than now - 3h)
 exports.getMeetups = async (req, res) => {
   try {
-    const meetups = await Meetup.find({ status: 'upcoming' }).sort({ date: 1, time: 1 });
-    res.json({ success: true, count: meetups.length, data: meetups });
+    const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000);
+
+    // get likely upcoming then filter in JS to support legacy docs without startAt
+    const raw = await Meetup.find({ status: { $ne: 'cancelled' } }).sort({ startAt: 1, date: 1, time: 1 });
+
+    const list = raw
+      .map(m => ensureStartAt(m))
+      .filter(m => !m.startAt || m.startAt >= cutoff); // if a doc still has no startAt, keep it visible
+
+    res.json({ success: true, count: list.length, data: list });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// Get meetups the user organized or joined
+// Get meetups that user has joined or organized (also hide older than now - 3h)
 exports.getMyMeetups = async (req, res) => {
   try {
     const { userId } = req.params;
-    const meetups = await Meetup.find({
+    const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000);
+
+    const raw = await Meetup.find({
       $or: [{ 'organizer.id': userId }, { 'attendees.userId': userId }]
-    }).sort({ date: 1, time: 1 });
-    res.json({ success: true, count: meetups.length, data: meetups });
+    }).sort({ startAt: 1, date: 1, time: 1 });
+
+    const list = raw
+      .map(m => ensureStartAt(m))
+      .filter(m => !m.startAt || m.startAt >= cutoff);
+
+    res.json({ success: true, count: list.length, data: list });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -103,7 +137,27 @@ exports.getMeetupById = async (req, res) => {
     const { id } = req.params;
     const meetup = await Meetup.findById(id);
     if (!meetup) return res.status(404).json({ success: false, message: 'Meetup not found' });
-    res.json({ success: true, data: meetup });
+    res.json({ success: true, data: ensureStartAt(meetup) });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+// Delete a meetup (only organizer)
+exports.deleteMeetup = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.body; // in real life use auth middleware
+
+    const meetup = await Meetup.findById(id);
+    if (!meetup) return res.status(404).json({ success: false, message: 'Meetup not found' });
+
+    if (meetup.organizer.id !== userId) {
+      return res.status(403).json({ success: false, message: 'Only the organizer can delete this meetup' });
+    }
+
+    await Meetup.findByIdAndDelete(id);
+    res.json({ success: true, message: 'Meetup deleted' });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }

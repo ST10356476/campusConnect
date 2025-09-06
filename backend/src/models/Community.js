@@ -13,31 +13,13 @@ const CommunitySchema = new mongoose.Schema({
     maxlength: [1000, 'Description cannot exceed 1000 characters']
   },
   avatar: {
-    filename: {
-      type: String,
-      default: null
-    },
-    originalName: {
-      type: String,
-      default: null
-    },
-    url: {
-      type: String,
-      default: null
-    },
-    fileType: {
-      type: String,
-      default: null
-    },
-    fileSize: {
-      type: Number,
-      default: null
-    },
-    uploadedAt: {
-      type: Date,
-      default: null
-    }
-  },
+  filename: String,
+  originalName: String,
+  url: { type: String, default: 'https://via.placeholder.com/200x200?text=Community' },
+  fileType: String,
+  fileSize: Number,
+  uploadedAt: Date
+},
   category: {
     type: String,
     required: [true, 'Please provide community category'],
@@ -90,6 +72,7 @@ const CommunitySchema = new mongoose.Schema({
     type: String,
     trim: true
   }],
+
   posts: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'CommunityPost'
@@ -98,38 +81,29 @@ const CommunitySchema = new mongoose.Schema({
     type: String,
     required: [true, 'Please provide university']
   },
-  course: {
-    type: String,
-    default: null
-  },
+  course: String,
+  course: String,
   isActive: {
     type: Boolean,
     default: true
   },
+
+
   settings: {
     allowPosts: { type: Boolean, default: true },
     requireApproval: { type: Boolean, default: false },
     allowFiles: { type: Boolean, default: true }
-  }
+  }  
+  }  
 }, {
-  timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
+  timestamps: true
+  timestamps: true
 });
 
 // Virtual for member count
 CommunitySchema.virtual('memberCount').get(function() {
-  return this.members ? this.members.length : 0;
+  return this.members.length;
+  return this.members.length;
 });
-
-// Virtual for avatar URL (for backward compatibility)
-CommunitySchema.virtual('avatarUrl').get(function() {
-  return this.avatar && this.avatar.url ? this.avatar.url : null;
-});
-
-// Index for better query performance
-CommunitySchema.index({ name: 1, creator: 1 });
-CommunitySchema.index({ category: 1, university: 1 });
-CommunitySchema.index({ isActive: 1, isPrivate: 1 });
 
 module.exports = mongoose.model('Community', CommunitySchema);

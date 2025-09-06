@@ -5,8 +5,8 @@ const {
   replyToPost,
   toggleLikePost,
   getPost
-} = require('../src/controllers/postController');
-const { protect } = require('../src/middleware/auth');
+} = require('../controllers/postController');
+const { protect } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -28,18 +28,10 @@ const postValidation = [
     .withMessage('Community ID is required')
 ];
 
-// Reply validation
-const replyValidation = [
-  body('content')
-    .trim()
-    .isLength({ min: 1, max: 2000 })
-    .withMessage('Reply content must be between 1-2000 characters')
-];
-
-// Post Routes
+// Routes
 router.post('/', protect, postValidation, createPost);
 router.get('/:id', protect, getPost);
-router.post('/:id/reply', protect, replyValidation, replyToPost);
+router.post('/:id/reply', protect, replyToPost);
 router.post('/:id/like', protect, toggleLikePost);
 
 module.exports = router;

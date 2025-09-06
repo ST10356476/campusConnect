@@ -214,7 +214,7 @@ export function Meetups({ user }: MeetupsProps) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl text-gray-900 mb-2">Study Meetups</h1>
+          <h1 className="text-3xl text-gray-900 mb-2">Lets Meetup</h1>
           <p className="text-gray-600">Join study sessions and collaborate with peers</p>
         </div>
         <button onClick={() => { setModalError(''); setShowModal(true); }}

@@ -9,7 +9,6 @@ interface ImportMeta {
   readonly env: ImportMetaEnv
 }
 
-
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export interface User {
@@ -36,7 +35,6 @@ export interface User {
   name: string;
   badges: string[];
 }
-
 
 export interface Community {
   id: string;
@@ -118,7 +116,8 @@ class ApiService {
     return this.token;
   }
 
-  private async request(endpoint: string, options: RequestInit = {}) {
+  // Make request method public
+  async request(endpoint: string, options: RequestInit = {}) {
     const url = `${this.baseURL}${endpoint}`;
     const token = this.getToken();
 
@@ -206,6 +205,76 @@ class ApiService {
     });
   }
 
+  // Create community with image upload
+  async createCommunityWithImage(formData: FormData) {
+    const token = this.getToken();
+    const response = await fetch(`${this.baseURL}/communities`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return data;
+  }
+
+  // Update community with image upload
+  async updateCommunityWithImage(communityId: string, formData: FormData) {
+    const token = this.getToken();
+    const response = await fetch(`${this.baseURL}/communities/${communityId}`, {
+      method: 'PUT',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return data;
+  }
+
+  // Upload community avatar separately
+  async uploadCommunityAvatar(communityId: string, file: File) {
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    const token = this.getToken();
+    const response = await fetch(`${this.baseURL}/communities/${communityId}/avatar`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return data;
+  }
+
+  // Delete community avatar
+  async deleteCommunityAvatar(communityId: string) {
+    return this.request(`/communities/${communityId}/avatar`, {
+      method: 'DELETE',
+    });
+  }
+
   async joinCommunity(communityId: string) {
     return this.request(`/communities/${communityId}/join`, {
       method: 'POST',
@@ -219,33 +288,48 @@ class ApiService {
   }
 
   async getCommunityById(communityId: string) {
-  return this.request(`/communities/${communityId}`);
-}
+    return this.request(`/communities/${communityId}`);
+  }
 
-async getCommunityPosts(communityId: string, params: any = {}) {
-  const queryString = new URLSearchParams(params).toString();
-  return this.request(`/communities/${communityId}/posts?${queryString}`);
-}
+  async getCommunityPosts(communityId: string, params: any = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.request(`/communities/${communityId}/posts?${queryString}`);
+  }
 
-async createCommunityPost(postData: any) {
-  return this.request('/posts', {
-    method: 'POST',
-    body: JSON.stringify(postData),
-  });
-}
+  async createCommunityPost(postData: any) {
+    return this.request('/posts', {
+      method: 'POST',
+      body: JSON.stringify(postData),
+    });
+  }
 
-async replyToPost(postId: string, replyData: any) {
-  return this.request(`/posts/${postId}/reply`, {
-    method: 'POST',
-    body: JSON.stringify(replyData),
-  });
-}
+  async replyToPost(postId: string, replyData: any) {
+    return this.request(`/posts/${postId}/reply`, {
+      method: 'POST',
+      body: JSON.stringify(replyData),
+    });
+  }
 
-async likePost(postId: string) {
-  return this.request(`/posts/${postId}/like`, {
-    method: 'POST',
-  });
-}
+  async likePost(postId: string) {
+    return this.request(`/posts/${postId}/like`, {
+      method: 'POST',
+    });
+  }
+
+  // Update community (regular update without image)
+  async updateCommunity(communityId: string, updateData: any) {
+    return this.request(`/communities/${communityId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData),
+    });
+  }
+
+  // Delete community
+  async deleteCommunity(communityId: string) {
+    return this.request(`/communities/${communityId}`, {
+      method: 'DELETE',
+    });
+  }
 
   // Materials methods
   async getMaterials(params: any = {}) {

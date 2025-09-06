@@ -13,8 +13,30 @@ const CommunitySchema = new mongoose.Schema({
     maxlength: [1000, 'Description cannot exceed 1000 characters']
   },
   avatar: {
-    type: String,
-    default: null
+    filename: {
+      type: String,
+      default: null
+    },
+    originalName: {
+      type: String,
+      default: null
+    },
+    url: {
+      type: String,
+      default: null
+    },
+    fileType: {
+      type: String,
+      default: null
+    },
+    fileSize: {
+      type: Number,
+      default: null
+    },
+    uploadedAt: {
+      type: Date,
+      default: null
+    }
   },
   category: {
     type: String,
@@ -98,6 +120,11 @@ const CommunitySchema = new mongoose.Schema({
 // Virtual for member count
 CommunitySchema.virtual('memberCount').get(function() {
   return this.members ? this.members.length : 0;
+});
+
+// Virtual for avatar URL (for backward compatibility)
+CommunitySchema.virtual('avatarUrl').get(function() {
+  return this.avatar && this.avatar.url ? this.avatar.url : null;
 });
 
 // Index for better query performance

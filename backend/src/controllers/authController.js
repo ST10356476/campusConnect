@@ -2,12 +2,9 @@ const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
 const { validationResult } = require('express-validator');
 
-// @desc    Register user
-// @route   POST /api/auth/register
-// @access  Public
+
 const register = async (req, res) => {
   try {
-    // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -27,20 +24,16 @@ const register = async (req, res) => {
       year
     } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({
-      $or: [{ email }, { username }]
-    });
-
+    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
     if (existingUser) {
       return res.status(400).json({
-        message: existingUser.email === email 
-          ? 'User with this email already exists' 
-          : 'Username already taken'
+        message:
+          existingUser.email === email
+            ? 'User with this email already exists'
+            : 'Username already taken'
       });
     }
 
-    // Create user
     const user = await User.create({
       username,
       email,
@@ -54,7 +47,6 @@ const register = async (req, res) => {
       }
     });
 
-    // Generate token
     const token = generateToken(user._id);
 
     res.status(201).json({
@@ -87,7 +79,6 @@ const register = async (req, res) => {
 // @access  Public
 const login = async (req, res) => {
   try {
-    // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -98,29 +89,19 @@ const login = async (req, res) => {
 
     const { email, password } = req.body;
 
-    // Check for user
     const user = await User.findOne({ email }).select('+password');
-
     if (!user) {
-      return res.status(401).json({
-        message: 'Invalid email or password'
-      });
+      return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // Check password
     const isMatch = await user.matchPassword(password);
-
     if (!isMatch) {
-      return res.status(401).json({
-        message: 'Invalid email or password'
-      });
+      return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // Update last active
     user.lastActive = new Date();
     await user.save();
 
-    // Generate token
     const token = generateToken(user._id);
 
     res.json({
@@ -180,8 +161,87 @@ const getMe = async (req, res) => {
   }
 };
 
+// @desc    Update current user's profile
+// @route   PUT /api/auth/profile
+// @access  Private
+const updateProfile = async (req, res) => {
+  try {
+    const body = req.body || {};
+
+    // If UI sends a single "name", split to first + last
+    if (body.name && !body.firstName && !body.lastName) {
+      const parts = String(body.name).trim().split(/\s+/);
+      body.firstName = parts.shift() || '';
+      body.lastName = parts.join(' ');
+    }
+
+    // Only fields that exist in your schema
+    const allowed = [
+      'firstName',
+      'lastName',
+      'avatar',
+      'bio',
+      'location',   // included and supported by model below
+      'joinedDate', // included and supported by model below
+      'university',
+      'course',
+      'year',
+      'skills',
+      'interests'
+    ];
+
+    const set = {};
+    for (const key of allowed) {
+      if (body[key] !== undefined) {
+        set[`profile.${key}`] = body[key];
+      }
+    }
+
+    // Optional username update via profile screen
+    if (body.username !== undefined) {
+      set.username = body.username;
+    }
+
+    const updated = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: set },
+      { new: true }
+    )
+      .populate('communities', 'name avatar')
+      .populate('achievements', 'title description');
+
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Profile updated',
+      user: {
+        id: updated._id,
+        username: updated.username,
+        email: updated.email,
+        profile: updated.profile,
+        points: updated.points,
+        communities: updated.communities,
+        achievements: updated.achievements,
+        isVerified: updated.isVerified,
+        lastActive: updated.lastActive
+      }
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error updating profile',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
-  getMe
-}
+  getMe,
+  updateProfile
+};

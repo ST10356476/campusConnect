@@ -2,7 +2,6 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_URL: string
-  // add other env vars here...
 }
 
 interface ImportMeta {
@@ -26,6 +25,9 @@ export interface User {
     year: number;
     skills?: string[];
     interests?: string[];
+    // added so profile edits persist
+    location?: string;
+    joinedDate?: string;
   };
   points: number;
   communities: string[];
@@ -116,7 +118,6 @@ class ApiService {
     return this.token;
   }
 
-  // Make request method public
   async request(endpoint: string, options: RequestInit = {}) {
     const url = `${this.baseURL}${endpoint}`;
     const token = this.getToken();
@@ -130,22 +131,17 @@ class ApiService {
       ...options,
     };
 
-    try {
-      const response = await fetch(url, config);
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || `HTTP error! status: ${response.status}`);
-      }
+    const response = await fetch(url, config);
+    const data = await response.json();
 
-      return data;
-    } catch (error) {
-      console.error('API request failed:', error);
-      throw error;
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`);
     }
+
+    return data;
   }
 
-  // Auth methods
+  // Auth
   async register(userData: {
     username: string;
     email: string;
@@ -160,11 +156,7 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(userData),
     });
-    
-    if (response.token) {
-      this.setToken(response.token);
-    }
-    
+    if (response.token) this.setToken(response.token);
     return response;
   }
 
@@ -173,11 +165,7 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
-    
-    if (response.token) {
-      this.setToken(response.token);
-    }
-    
+    if (response.token) this.setToken(response.token);
     return response;
   }
 
@@ -185,6 +173,7 @@ class ApiService {
     return this.request('/auth/me');
   }
 
+  // Profile update: flat fields like firstName, lastName, bio, interests, avatar, location, joinedDate
   async updateProfile(profileData: any) {
     return this.request('/auth/profile', {
       method: 'PUT',
@@ -192,7 +181,7 @@ class ApiService {
     });
   }
 
-  // Communities methods
+  // Communities
   async getCommunities(params: any = {}) {
     const queryString = new URLSearchParams(params).toString();
     return this.request(`/communities?${queryString}`);
@@ -217,11 +206,9 @@ class ApiService {
     });
 
     const data = await response.json();
-    
     if (!response.ok) {
       throw new Error(data.message || `HTTP error! status: ${response.status}`);
     }
-
     return data;
   }
 
@@ -237,11 +224,9 @@ class ApiService {
     });
 
     const data = await response.json();
-    
     if (!response.ok) {
       throw new Error(data.message || `HTTP error! status: ${response.status}`);
     }
-
     return data;
   }
 
@@ -260,11 +245,9 @@ class ApiService {
     });
 
     const data = await response.json();
-    
     if (!response.ok) {
       throw new Error(data.message || `HTTP error! status: ${response.status}`);
     }
-
     return data;
   }
 
@@ -331,7 +314,7 @@ class ApiService {
     });
   }
 
-  // Materials methods
+  // Materials
   async getMaterials(params: any = {}) {
     const queryString = new URLSearchParams(params).toString();
     return this.request(`/materials?${queryString}`);

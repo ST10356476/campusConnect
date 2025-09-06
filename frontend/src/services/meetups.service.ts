@@ -1,4 +1,3 @@
-// frontend/src/services/meetups.service.ts
 import { Meetup, CreateMeetupData, JoinMeetupData, ApiResponse } from '../types/meetup.types';
 
 const API_BASE_URL = 'http://localhost:5000/api'; // Change this to your backend URL

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, MessageSquare, Plus, Search, Filter, Heart, MessageCircle, Share2 } from 'lucide-react';
+import { Users, MessageSquare, Plus, Search, Filter, Heart, MessageCircle, Share2 } from 'lucide-react';
 import { apiService, User, Community } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
@@ -11,6 +12,7 @@ export function Communities({ user }: CommunitiesProps) {
   const navigate = useNavigate();
   
   const [activeTab, setActiveTab] = useState<'discover' | 'joined' | 'posts'>('discover');
+  const [showQuestionModal, setShowQuestionModal] = useState(false);
   const [showQuestionModal, setShowQuestionModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -58,6 +60,33 @@ export function Communities({ user }: CommunitiesProps) {
       tags: ['algorithms', 'learning', 'resources']
     }
   ];
+  // Mock posts data (you can replace with real API later)
+  const posts = [
+    {
+      id: 1,
+      title: 'How to optimize React rendering performance?',
+      content: 'I\'m working on a large React app and noticing some performance issues. What are the best practices for optimizing rendering?',
+      author: 'Sarah Chen',
+      authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sarah',
+      community: 'React Developers',
+      timeAgo: '2 hours ago',
+      likes: 12,
+      comments: 8,
+      tags: ['react', 'performance', 'optimization']
+    },
+    {
+      id: 2,
+      title: 'Best resources for learning algorithms?',
+      content: 'Starting my journey into competitive programming. What are your recommended resources for learning algorithms and data structures?',
+      author: 'Mike Johnson',
+      authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=mike',
+      community: 'Computer Science',
+      timeAgo: '4 hours ago',
+      likes: 25,
+      comments: 15,
+      tags: ['algorithms', 'learning', 'resources']
+    }
+  ];
 
   // Fetch communities from API
   const fetchCommunities = async () => {
@@ -72,10 +101,13 @@ export function Communities({ user }: CommunitiesProps) {
       
       if (response.success) {
         console.log('API Response communities:', response.communities); // Debug log
+        console.log('API Response communities:', response.communities); // Debug log
         setCommunities(response.communities || []);
         
+        // Fix: Check both user ID formats and nested user objects with proper typing
         const joined = response.communities?.filter((community: any) => {
           const isMember = community.members?.some((member: any) => {
+            // Handle different member user formats
             const memberUserId = typeof member.user === 'string' 
               ? member.user 
               : member.user?._id || member.user?.id;
@@ -84,9 +116,11 @@ export function Communities({ user }: CommunitiesProps) {
           });
           
           console.log(`Community ${community.name} - isMember:`, isMember); // Debug log
+          console.log(`Community ${community.name} - isMember:`, isMember); // Debug log
           return isMember;
         }) || [];
         
+        console.log('Joined communities:', joined); // Debug log
         console.log('Joined communities:', joined); // Debug log
         setJoinedCommunities(joined);
       }
@@ -105,6 +139,7 @@ export function Communities({ user }: CommunitiesProps) {
     try {
       setLoading(true);
       
+      // Validate required fields
       if (!createForm.name.trim()) {
         alert('Community name is required');
         return;
@@ -130,6 +165,7 @@ export function Communities({ user }: CommunitiesProps) {
         return;
       }
       
+      // Properly format the data
       const communityData = {
         name: createForm.name.trim(),
         description: createForm.description.trim(),
@@ -140,6 +176,9 @@ export function Communities({ user }: CommunitiesProps) {
         university: createForm.university.trim(),
         course: createForm.course.trim() || undefined
       };
+
+      console.log('Creating community with data:', communityData); // Debug log
+      
 
       console.log('Creating community with data:', communityData); // Debug log
       
@@ -158,6 +197,7 @@ export function Communities({ user }: CommunitiesProps) {
           course: ''
         });
         
+        // Refresh communities
         await fetchCommunities();
         alert('Community created successfully!');
       }
@@ -172,9 +212,11 @@ export function Communities({ user }: CommunitiesProps) {
   const handleJoinCommunity = async (communityId: string) => {
     try {
       console.log('Joining community with ID:', communityId); // Debug log
+      console.log('Joining community with ID:', communityId); // Debug log
       const response = await apiService.joinCommunity(communityId);
       
       if (response.success) {
+        // Refresh communities
         await fetchCommunities();
       }
     } catch (error: any) {
@@ -188,6 +230,7 @@ export function Communities({ user }: CommunitiesProps) {
       const response = await apiService.leaveCommunity(communityId);
       
       if (response.success) {
+        // Refresh communities
         await fetchCommunities();
       }
     } catch (error: any) {

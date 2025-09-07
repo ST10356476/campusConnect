@@ -82,22 +82,27 @@ const CommunitySchema = new mongoose.Schema({
     required: [true, 'Please provide university']
   },
   course: String,
+  course: String,
   isActive: {
     type: Boolean,
     default: true
   },
+
 
   settings: {
     allowPosts: { type: Boolean, default: true },
     requireApproval: { type: Boolean, default: false },
     allowFiles: { type: Boolean, default: true }
   }  
+  }  
 }, {
+  timestamps: true
   timestamps: true
 });
 
 // Virtual for member count
 CommunitySchema.virtual('memberCount').get(function() {
+  return this.members.length;
   return this.members.length;
 });
 

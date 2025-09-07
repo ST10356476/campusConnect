@@ -2,6 +2,59 @@ const Community = require('../models/Community');
 const User = require('../models/User');
 const { validationResult } = require('express-validator');
 
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs').promises;
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const uploadPath = path.join(__dirname, '../uploads/communities');
+    try {
+      await fs.mkdir(uploadPath, { recursive: true });
+    } catch (error) {
+      console.error('Error creating upload directory:', error);
+    }
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, `community-${uniqueSuffix}${ext}`);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  // Only allow image files
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed'), false);
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB limit
+  }
+});
+
+// Helper function to delete old avatar file
+const deleteOldAvatar = async (avatarPath) => {
+  if (avatarPath) {
+    try {
+      const fullPath = path.join(__dirname, '../uploads/communities', path.basename(avatarPath));
+      await fs.unlink(fullPath);
+      console.log('Old avatar deleted:', fullPath);
+    } catch (error) {
+      console.error('Error deleting old avatar:', error);
+    }
+  }
+};
+
+
 // @desc    Get all communities
 // @route   GET /api/communities
 // @access  Private
@@ -15,8 +68,6 @@ const getCommunities = async (req, res) => {
       limit = 10,
       sortBy = 'createdAt'
     } = req.query;
-
-    console.log('Get communities request:', { category, university, search, page, limit, sortBy });
 
     // Build query
     const query = { isActive: true };
@@ -102,18 +153,7 @@ const createCommunity = async (req, res) => {
       course
     } = req.body;
 
-    console.log('Create community request:', { 
-      name, 
-      description: description.substring(0, 50) + '...', 
-      category, 
-      isPrivate, 
-      maxMembers, 
-      tags, 
-      university, 
-      course,
-      userId: req.user.id 
-    });
-
+    // Check if community with same name exists for this user
     // Check if community with same name exists for this user
     const existingCommunity = await Community.findOne({
       name: { $regex: new RegExp('^' + name + '$', 'i') },
@@ -185,7 +225,7 @@ const joinCommunity = async (req, res) => {
     // Debug logging
     console.log('Join community params:', req.params);
     console.log('Join community body:', req.body);
-    console.log('Join community user:', req.user && req.user.id);
+    console.log('Join community user:', req.user?.id);
 
     // Get community ID from params or body
     const communityId = req.params.id || req.params.communityId || req.body.communityId;
@@ -254,8 +294,6 @@ const joinCommunity = async (req, res) => {
 
     await community.save();
 
-    console.log('User joined community successfully:', { userId: req.user.id, communityId });
-
     // Add community to user's communities
     await User.findByIdAndUpdate(req.user.id, {
       $push: { communities: community._id }
@@ -290,7 +328,8 @@ const joinCommunity = async (req, res) => {
 // @access  Private
 const leaveCommunity = async (req, res) => {
   try {
-    console.log('Leave community request:', { params: req.params, userId: req.user.id });
+    // Debug logging
+    console.log('Leave community params:', req.params);
     
     const communityId = req.params.id || req.params.communityId || req.body.communityId;
 
@@ -363,14 +402,12 @@ const leaveCommunity = async (req, res) => {
   }
 };
 
-// @desc    Get community by ID
+// @desc    Get community
 // @route   GET /api/communities/:id
 // @access  Private
 const getCommunityById = async (req, res) => {
   try {
     const communityId = req.params.id || req.params.communityId;
-
-    console.log('Get community by ID:', { communityId, userId: req.user.id });
 
     if (!communityId || !communityId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ 
@@ -381,7 +418,8 @@ const getCommunityById = async (req, res) => {
 
     const community = await Community.findById(communityId)
       .populate('creator', 'username profile.firstName profile.lastName profile.avatar')
-      .populate('members.user', 'username profile.firstName profile.lastName profile.avatar');
+      .populate('members.user', 'username profile.firstName profile.lastName profile.avatar')
+      .populate('posts');
 
     if (!community) {
       return res.status(404).json({ 
@@ -392,10 +430,7 @@ const getCommunityById = async (req, res) => {
 
     // Check if user is a member - robust checking
     const isMember = community.members.some(
-      member => {
-        const memberUserId = member.user._id ? member.user._id.toString() : member.user.toString();
-        return memberUserId === req.user.id;
-      }
+      member => member.user._id.toString() === req.user.id
     );
 
     console.log('Community membership check:', {
@@ -413,6 +448,7 @@ const getCommunityById = async (req, res) => {
         ...community.toObject(),
         id: community._id.toString(),
         memberCount: community.members.length,
+        isMember
         isMember
       }
     });

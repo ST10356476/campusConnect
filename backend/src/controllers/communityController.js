@@ -2,6 +2,59 @@ const Community = require('../models/Community');
 const User = require('../models/User');
 const { validationResult } = require('express-validator');
 
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs').promises;
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const uploadPath = path.join(__dirname, '../uploads/communities');
+    try {
+      await fs.mkdir(uploadPath, { recursive: true });
+    } catch (error) {
+      console.error('Error creating upload directory:', error);
+    }
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, `community-${uniqueSuffix}${ext}`);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  // Only allow image files
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed'), false);
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB limit
+  }
+});
+
+// Helper function to delete old avatar file
+const deleteOldAvatar = async (avatarPath) => {
+  if (avatarPath) {
+    try {
+      const fullPath = path.join(__dirname, '../uploads/communities', path.basename(avatarPath));
+      await fs.unlink(fullPath);
+      console.log('Old avatar deleted:', fullPath);
+    } catch (error) {
+      console.error('Error deleting old avatar:', error);
+    }
+  }
+};
+
+
 // @desc    Get all communities
 // @route   GET /api/communities
 // @access  Private

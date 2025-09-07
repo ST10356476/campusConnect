@@ -2,15 +2,18 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_URL: string
+  // add other env vars here...
 }
 
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
 
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export interface User {
+  _id: string;
   id: string;
   username: string;
   email: string;
@@ -25,8 +28,6 @@ export interface User {
     year: number;
     skills?: string[];
     interests?: string[];
-    location?: string;
-    joinedDate?: string;
   };
   points: number;
   communities: string[];
@@ -36,6 +37,7 @@ export interface User {
   name: string;
   badges: string[];
 }
+
 
 export interface Community {
   id: string;
@@ -117,7 +119,7 @@ class ApiService {
     return this.token;
   }
 
-  async request(endpoint: string, options: RequestInit = {}) {
+  private async request(endpoint: string, options: RequestInit = {}) {
     const url = `${this.baseURL}${endpoint}`;
     const token = this.getToken();
 
@@ -130,16 +132,22 @@ class ApiService {
       ...options,
     };
 
-    const response = await fetch(url, config);
-    const data = await response.json();
+    try {
+      const response = await fetch(url, config);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+      }
 
-    if (!response.ok) {
-      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+      return data;
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
     }
-
-    return data;
   }
 
+  // Auth methods
   async register(userData: {
     username: string;
     email: string;
@@ -154,8 +162,11 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(userData),
     });
-
-    if (response.token) this.setToken(response.token);
+    
+    if (response.token) {
+      this.setToken(response.token);
+    }
+    
     return response;
   }
 
@@ -164,7 +175,11 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
-    if (response.token) this.setToken(response.token);
+    
+    if (response.token) {
+      this.setToken(response.token);
+    }
+    
     return response;
   }
 
@@ -172,7 +187,6 @@ class ApiService {
     return this.request('/auth/me');
   }
 
-  // Sends flat fields like { firstName, lastName, bio, interests, avatar, location, joinedDate }
   async updateProfile(profileData: any) {
     return this.request('/auth/profile', {
       method: 'PUT',
@@ -180,7 +194,102 @@ class ApiService {
     });
   }
 
-  // other methods unchanged ...
+  // Communities methods
+  async getCommunities(params: any = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.request(`/communities?${queryString}`);
+  }
+
+  async createCommunity(communityData: any) {
+    return this.request('/communities', {
+      method: 'POST',
+      body: JSON.stringify(communityData),
+    });
+  }
+
+  async joinCommunity(communityId: string) {
+    return this.request(`/communities/${communityId}/join`, {
+      method: 'POST',
+    });
+  }
+
+  async leaveCommunity(communityId: string) {
+    return this.request(`/communities/${communityId}/leave`, {
+      method: 'POST',
+    });
+  }
+
+  async getCommunityById(communityId: string) {
+  return this.request(`/communities/${communityId}`);
+}
+
+async getCommunityPosts(communityId: string, params: any = {}) {
+  const queryString = new URLSearchParams(params).toString();
+  return this.request(`/communities/${communityId}/posts?${queryString}`);
+}
+
+async createCommunityPost(postData: any) {
+  return this.request('/posts', {
+    method: 'POST',
+    body: JSON.stringify(postData),
+  });
+}
+
+async replyToPost(postId: string, replyData: any) {
+  return this.request(`/posts/${postId}/reply`, {
+    method: 'POST',
+    body: JSON.stringify(replyData),
+  });
+}
+
+async likePost(postId: string) {
+  return this.request(`/posts/${postId}/like`, {
+    method: 'POST',
+  });
+}
+
+  // Materials methods
+  async getMaterials(params: any = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.request(`/materials?${queryString}`);
+  }
+
+  async uploadMaterial(materialData: any) {
+    return this.request('/materials', {
+      method: 'POST',
+      body: JSON.stringify(materialData),
+    });
+  }
+
+  async likeMaterial(materialId: string) {
+    return this.request(`/materials/${materialId}/like`, {
+      method: 'POST',
+    });
+  }
+
+  
+
+  // Generic helper for file uploads
+  async uploadFile(file: File, endpoint: string) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const token = this.getToken();
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Upload failed');
+    }
+
+    return response.json();
+  }
 }
 
 export const apiService = new ApiService();

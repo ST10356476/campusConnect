@@ -7,6 +7,15 @@ const studyMaterialSchema = new mongoose.Schema({
   url: String,
   fileType: String,
   fileSize: Number,
+  uploadedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  savedBy: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
   flashcards: { type: Array, default: [] },
   summary: { type: String, default: "" },
   quiz: { type: Array, default: [] },

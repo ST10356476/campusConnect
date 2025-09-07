@@ -13,6 +13,7 @@ interface ImportMeta {
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export interface User {
+  _id: string;
   id: string;
   username: string;
   email: string;
@@ -265,6 +266,8 @@ async likePost(postId: string) {
       method: 'POST',
     });
   }
+
+  
 
   // Generic helper for file uploads
   async uploadFile(file: File, endpoint: string) {

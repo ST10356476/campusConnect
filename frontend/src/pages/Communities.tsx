@@ -74,10 +74,8 @@ export function Communities({ user }: CommunitiesProps) {
         console.log('API Response communities:', response.communities); // Debug log
         setCommunities(response.communities || []);
         
-        // Fix: Check both user ID formats and nested user objects with proper typing
         const joined = response.communities?.filter((community: any) => {
           const isMember = community.members?.some((member: any) => {
-            // Handle different member user formats
             const memberUserId = typeof member.user === 'string' 
               ? member.user 
               : member.user?._id || member.user?.id;
@@ -99,17 +97,14 @@ export function Communities({ user }: CommunitiesProps) {
     }
   };
 
-  // Load communities on component mount and when search/filter changes
   useEffect(() => {
     fetchCommunities();
   }, [searchTerm, selectedCategory]);
 
-  // Create community
   const handleCreateCommunity = async () => {
     try {
       setLoading(true);
       
-      // Validate required fields
       if (!createForm.name.trim()) {
         alert('Community name is required');
         return;
@@ -135,7 +130,6 @@ export function Communities({ user }: CommunitiesProps) {
         return;
       }
       
-      // Properly format the data
       const communityData = {
         name: createForm.name.trim(),
         description: createForm.description.trim(),
@@ -164,7 +158,6 @@ export function Communities({ user }: CommunitiesProps) {
           course: ''
         });
         
-        // Refresh communities
         await fetchCommunities();
         alert('Community created successfully!');
       }
@@ -176,14 +169,12 @@ export function Communities({ user }: CommunitiesProps) {
     }
   };
 
-  // Join community
   const handleJoinCommunity = async (communityId: string) => {
     try {
       console.log('Joining community with ID:', communityId); // Debug log
       const response = await apiService.joinCommunity(communityId);
       
       if (response.success) {
-        // Refresh communities
         await fetchCommunities();
       }
     } catch (error: any) {
@@ -192,13 +183,11 @@ export function Communities({ user }: CommunitiesProps) {
     }
   };
 
-  // Leave community
   const handleLeaveCommunity = async (communityId: string) => {
     try {
       const response = await apiService.leaveCommunity(communityId);
       
       if (response.success) {
-        // Refresh communities
         await fetchCommunities();
       }
     } catch (error: any) {
@@ -207,7 +196,6 @@ export function Communities({ user }: CommunitiesProps) {
     }
   };
 
-  // Check if user is member of community
   const isMemberOfCommunity = (community: any) => {
     return community.members?.some((member: any) => {
       const memberUserId = typeof member.user === 'string' 
@@ -217,7 +205,47 @@ export function Communities({ user }: CommunitiesProps) {
     });
   };
 
-  // Get display name for user
+  const isCreator = (community: Community) => {
+    if (typeof community.creator === 'string') {
+      // If creator is a string (likely user ID), compare with user.id
+      return community.creator === user.id;
+    }
+    // Otherwise, compare username if available
+    if (community.creator && typeof community.creator === 'object' && 'username' in community.creator) {
+      return (community.creator as User).username === user.username;
+    }
+    return false;
+  };
+
+  const handleDeleteCommunity = async (communityId: string) => {
+    if (!window.confirm('Are you sure you want to delete this community?')) return;
+
+    try {
+      const response = await apiService.deleteCommunity(communityId);
+      if (response.success) {
+        alert('Community deleted successfully');
+        fetchCommunities();
+      }
+    } catch (error) {
+      console.error('Failed to delete community:', error);
+      alert('Failed to delete community');
+    }
+  };
+
+  const handleEditCommunity = (community: Community) => {
+    setCreateForm({
+      name: community.name,
+      description: community.description,
+      category: community.category,
+      isPrivate: community.isPrivate,
+      maxMembers: community.maxMembers,
+      tags: community.tags.join(','),
+      university: community.university,
+      course: community.course || ''
+    });
+    setShowCreateModal(true);
+  };
+
   const getDisplayName = (user: User) => {
     return user.profile ? `${user.profile.firstName} ${user.profile.lastName}` : user.username;
   };
@@ -360,6 +388,23 @@ export function Communities({ user }: CommunitiesProps) {
                   </button>
                 )}
               </div>
+
+              {isCreator(community) && (
+                <div className="flex space-x-2 mt-4">
+                  <button
+                    onClick={() => handleEditCommunity(community)}
+                    className="text-yellow-600 hover:text-yellow-800 px-2 py-1 rounded-lg border border-yellow-200"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteCommunity(community.id)}
+                    className="text-red-600 hover:text-red-800 px-2 py-1 rounded-lg border border-red-200"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
             </div>
           ))}
           

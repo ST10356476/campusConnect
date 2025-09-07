@@ -13,9 +13,13 @@ const CommunitySchema = new mongoose.Schema({
     maxlength: [1000, 'Description cannot exceed 1000 characters']
   },
   avatar: {
-    type: String,
-    default: 'https://via.placeholder.com/200x200?text=Community'
-  },
+  filename: String,
+  originalName: String,
+  url: { type: String, default: 'https://via.placeholder.com/200x200?text=Community' },
+  fileType: String,
+  fileSize: Number,
+  uploadedAt: Date
+},
   category: {
     type: String,
     required: [true, 'Please provide community category'],

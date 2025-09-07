@@ -17,18 +17,30 @@ const getCommunityPosts = async (req, res) => {
       limit = 20
     } = req.query;
 
+    console.log('Getting posts for community:', communityId);
+    console.log('User ID:', req.user.id);
+
     // Check if community exists and user is a member
     const community = await Community.findById(communityId);
     if (!community) {
-      return res.status(404).json({ message: 'Community not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Community not found' 
+      });
     }
 
     const isMember = community.members.some(
       member => member.user.toString() === req.user.id
     );
 
+    console.log('Is member check:', isMember);
+    console.log('Community members:', community.members.map(m => m.user.toString()));
+
     if (!isMember) {
-      return res.status(403).json({ message: 'You must be a member to view posts' });
+      return res.status(403).json({ 
+        success: false,
+        message: 'You must be a member to view posts' 
+      });
     }
 
     // Build query
@@ -68,15 +80,19 @@ const getCommunityPosts = async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit));
 
+    console.log('Found posts:', posts.length);
+
     const total = await CommunityPost.countDocuments(query);
 
-    // Transform posts to include id field
+    // Transform posts to include id field and proper structure
     const transformedPosts = posts.map(post => ({
       ...post.toObject(),
       id: post._id.toString(),
+      likes: post.likes.map(like => like.user ? like.user.toString() : like.toString()),
       replies: post.replies.map(reply => ({
         ...reply.toObject(),
-        id: reply._id.toString()
+        id: reply._id.toString(),
+        likes: reply.likes.map(like => like.toString())
       }))
     }));
 
@@ -93,6 +109,7 @@ const getCommunityPosts = async (req, res) => {
   } catch (error) {
     console.error('Get community posts error:', error);
     res.status(500).json({
+      success: false,
       message: 'Server error fetching posts',
       error: error.message
     });
@@ -107,6 +124,7 @@ const createPost = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
+        success: false,
         message: 'Validation failed',
         errors: errors.array()
       });
@@ -120,10 +138,15 @@ const createPost = async (req, res) => {
       communityId
     } = req.body;
 
+    console.log('Creating post:', { title, content, type, communityId, userId: req.user.id });
+
     // Check if community exists and user is a member
     const community = await Community.findById(communityId);
     if (!community) {
-      return res.status(404).json({ message: 'Community not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Community not found' 
+      });
     }
 
     const isMember = community.members.some(
@@ -131,7 +154,10 @@ const createPost = async (req, res) => {
     );
 
     if (!isMember) {
-      return res.status(403).json({ message: 'You must be a member to create posts' });
+      return res.status(403).json({ 
+        success: false,
+        message: 'You must be a member to create posts' 
+      });
     }
 
     const post = await CommunityPost.create({
@@ -152,17 +178,21 @@ const createPost = async (req, res) => {
       .populate('author', 'username profile.firstName profile.lastName profile.avatar')
       .populate('replies.author', 'username profile.firstName profile.lastName profile.avatar');
 
+    console.log('Post created successfully:', populatedPost._id);
+
     res.status(201).json({
       success: true,
       message: 'Post created successfully',
       post: {
         ...populatedPost.toObject(),
-        id: populatedPost._id.toString()
+        id: populatedPost._id.toString(),
+        likes: populatedPost.likes.map(like => like.user ? like.user.toString() : like.toString())
       }
     });
   } catch (error) {
     console.error('Create post error:', error);
     res.status(500).json({
+      success: false,
       message: 'Server error creating post',
       error: error.message
     });
@@ -177,13 +207,21 @@ const replyToPost = async (req, res) => {
     const { content } = req.body;
     const postId = req.params.id;
 
+    console.log('Reply to post:', postId, 'content:', content, 'user:', req.user.id);
+
     if (!content || !content.trim()) {
-      return res.status(400).json({ message: 'Reply content is required' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'Reply content is required' 
+      });
     }
 
     const post = await CommunityPost.findById(postId);
     if (!post) {
-      return res.status(404).json({ message: 'Post not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Post not found' 
+      });
     }
 
     // Check if user is member of the community
@@ -193,18 +231,25 @@ const replyToPost = async (req, res) => {
     );
 
     if (!isMember) {
-      return res.status(403).json({ message: 'You must be a member to reply' });
+      return res.status(403).json({ 
+        success: false,
+        message: 'You must be a member to reply' 
+      });
     }
 
     // Check if post is locked
     if (post.isLocked) {
-      return res.status(403).json({ message: 'This post is locked' });
+      return res.status(403).json({ 
+        success: false,
+        message: 'This post is locked' 
+      });
     }
 
     const reply = {
       author: req.user.id,
       content: content.trim(),
-      createdAt: new Date()
+      createdAt: new Date(),
+      likes: []
     };
 
     post.replies.push(reply);
@@ -214,21 +259,26 @@ const replyToPost = async (req, res) => {
       .populate('author', 'username profile.firstName profile.lastName profile.avatar')
       .populate('replies.author', 'username profile.firstName profile.lastName profile.avatar');
 
+    console.log('Reply added successfully to post:', postId);
+
     res.json({
       success: true,
       message: 'Reply added successfully',
       post: {
         ...updatedPost.toObject(),
         id: updatedPost._id.toString(),
+        likes: updatedPost.likes.map(like => like.user ? like.user.toString() : like.toString()),
         replies: updatedPost.replies.map(reply => ({
           ...reply.toObject(),
-          id: reply._id.toString()
+          id: reply._id.toString(),
+          likes: reply.likes.map(like => like.toString())
         }))
       }
     });
   } catch (error) {
     console.error('Reply to post error:', error);
     res.status(500).json({
+      success: false,
       message: 'Server error adding reply',
       error: error.message
     });
@@ -243,9 +293,14 @@ const toggleLikePost = async (req, res) => {
     const postId = req.params.id;
     const userId = req.user.id;
 
+    console.log('Toggle like for post:', postId, 'by user:', userId);
+
     const post = await CommunityPost.findById(postId);
     if (!post) {
-      return res.status(404).json({ message: 'Post not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Post not found' 
+      });
     }
 
     // Check if user is member of the community
@@ -255,20 +310,31 @@ const toggleLikePost = async (req, res) => {
     );
 
     if (!isMember) {
-      return res.status(403).json({ message: 'You must be a member to like posts' });
+      return res.status(403).json({ 
+        success: false,
+        message: 'You must be a member to like posts' 
+      });
     }
 
-    const existingLike = post.likes.find(like => like.user.toString() === userId);
+    const existingLike = post.likes.find(like => {
+      const likeUserId = like.user ? like.user.toString() : like.toString();
+      return likeUserId === userId;
+    });
 
     if (existingLike) {
       // Unlike
-      post.likes = post.likes.filter(like => like.user.toString() !== userId);
+      post.likes = post.likes.filter(like => {
+        const likeUserId = like.user ? like.user.toString() : like.toString();
+        return likeUserId !== userId;
+      });
     } else {
       // Like
       post.likes.push({ user: userId, createdAt: new Date() });
     }
 
     await post.save();
+
+    console.log('Like toggled successfully:', !existingLike ? 'liked' : 'unliked');
 
     res.json({
       success: true,
@@ -279,6 +345,7 @@ const toggleLikePost = async (req, res) => {
   } catch (error) {
     console.error('Toggle like post error:', error);
     res.status(500).json({
+      success: false,
       message: 'Server error toggling like',
       error: error.message
     });
@@ -292,13 +359,18 @@ const getPost = async (req, res) => {
   try {
     const postId = req.params.id;
 
+    console.log('Getting single post:', postId, 'for user:', req.user.id);
+
     const post = await CommunityPost.findById(postId)
       .populate('author', 'username profile.firstName profile.lastName profile.avatar')
       .populate('replies.author', 'username profile.firstName profile.lastName profile.avatar')
       .populate('community', 'name');
 
     if (!post) {
-      return res.status(404).json({ message: 'Post not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Post not found' 
+      });
     }
 
     // Check if user is member of the community
@@ -308,7 +380,10 @@ const getPost = async (req, res) => {
     );
 
     if (!isMember) {
-      return res.status(403).json({ message: 'You must be a member to view this post' });
+      return res.status(403).json({ 
+        success: false,
+        message: 'You must be a member to view this post' 
+      });
     }
 
     // Increment view count
@@ -320,15 +395,18 @@ const getPost = async (req, res) => {
       post: {
         ...post.toObject(),
         id: post._id.toString(),
+        likes: post.likes.map(like => like.user ? like.user.toString() : like.toString()),
         replies: post.replies.map(reply => ({
           ...reply.toObject(),
-          id: reply._id.toString()
+          id: reply._id.toString(),
+          likes: reply.likes.map(like => like.toString())
         }))
       }
     });
   } catch (error) {
     console.error('Get post error:', error);
     res.status(500).json({
+      success: false,
       message: 'Server error fetching post',
       error: error.message
     });

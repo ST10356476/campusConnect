@@ -200,12 +200,6 @@ class ApiService {
     return this.request(`/communities?${queryString}`);
   }
 
-  async createCommunity(communityData: any) {
-    return this.request('/communities', {
-      method: 'POST',
-      body: JSON.stringify(communityData),
-    });
-  }
 
   async joinCommunity(communityId: string) {
     return this.request(`/communities/${communityId}/join`, {
@@ -226,6 +220,12 @@ class ApiService {
 async getCommunityPosts(communityId: string, params: any = {}) {
   const queryString = new URLSearchParams(params).toString();
   return this.request(`/communities/${communityId}/posts?${queryString}`);
+}
+
+async deleteCommunity(communityId: string) {
+  return this.request(`/communities/${communityId}`, {
+    method: 'DELETE',
+  });
 }
 
 async createCommunityPost(postData: any) {
@@ -267,7 +267,19 @@ async likePost(postId: string) {
     });
   }
 
-  
+  async createCommunity(communityData: any) {
+    return this.request('/communities', {
+      method: 'POST',
+      body: JSON.stringify(communityData),
+    });
+  }
+
+  async updateCommunity(communityId: string, communityData: any) {
+    return this.request(`/communities/${communityId}`, {
+      method: 'PUT',
+      body: JSON.stringify(communityData),
+    });
+  }
 
   // Generic helper for file uploads
   async uploadFile(file: File, endpoint: string) {

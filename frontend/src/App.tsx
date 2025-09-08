@@ -313,7 +313,7 @@ function App() {
                 <Route path="/materials" element={<StudyMaterials user={user} />} />
                 <Route path="/meetups" element={<Meetups user={user} />} />
                 <Route path="/achievements" element={<Achievements user={user} />} />
-                {/* <Route path="/profile" element={<Profile user={user} setUser={setUser} />} /> */}
+                <Route path="/profile" element={<Profile user={user} setUser={setUser} />} />
                 <Route path="/live/:sessionId" element={<LiveSession user={user} />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

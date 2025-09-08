@@ -58,9 +58,9 @@ const CommunitySchema = new mongoose.Schema({
   }],
   members: [{
     user: {
-      type: mongoose.Schema.Types.ObjectId,  // Fixed: Changed from Object to ObjectId
+      type: mongoose.Schema.Types.ObjectId,  
       ref: 'User',
-      default: []
+      required: true 
     },
     joinedAt: {
       type: Date,

@@ -44,6 +44,7 @@ const replyValidation = [
     .trim()
     .isLength({ min: 1, max: 2000 })
     .withMessage('Reply content must be between 1-2000 characters')
+];
 
 // Post Routes with Achievement Tracking
 router.post('/', protect, postCreatedMiddleware, postValidation, createPost);

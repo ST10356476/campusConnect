@@ -1,6 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Upload, FileText, Download, Eye, Sparkles, BookOpen, Brain, Target, Share2, Heart } from 'lucide-react';
+import axios from "axios";
 
 interface User {
   id: string;
@@ -9,9 +10,7 @@ interface User {
   avatar?: string;
   badges: string[];
   points?: number;  
-
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+}
 
 interface Flashcard {
   question: string;

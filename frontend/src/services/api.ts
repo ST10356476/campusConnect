@@ -26,10 +26,8 @@ export interface User {
     year: number;
     skills?: string[];
     interests?: string[];
-
     location?: string;
     joinedDate?: string;
-
   };
   points: number; // Keep this for backward compatibility - will always be 0
   communities: string[];
@@ -166,6 +164,42 @@ export interface StudyMaterial {
   createdAt: string;
 }
 
+export interface Meetup {
+  _id: string;
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  location: {
+    type: string;
+    venue?: string;
+    address?: string;
+    meetingLink?: string;
+    coordinates?: {
+      latitude: number;
+      longitude: number;
+    };
+  };
+  dateTime: {
+    start: Date;
+    end: Date;
+  };
+  maxAttendees?: number;
+  community?: string | Community;
+  tags?: string[];
+  requirements?: string;
+  isPublic?: boolean;
+  recurring?: {
+    isRecurring: boolean;
+    pattern?: string;
+    endDate?: Date;
+  };
+  attendees: string[];
+  host: string | User;
+  status: string;
+  createdAt: string;
+}
+
 class ApiService {
   private baseURL = API_BASE_URL;
   private token: string | null = null;
@@ -268,7 +302,6 @@ class ApiService {
     });
   }
 
-
   // Achievements
   async getAchievements(): Promise<{ 
     success: boolean; 
@@ -280,10 +313,6 @@ class ApiService {
     return this.request('/achievements');
   }
 
-  // Communities
-  async getCommunities(params: any = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    return this.request(`/communities?${queryString}`);
   // Community methods
   async getCommunities(params?: {
     category?: string;
@@ -368,6 +397,25 @@ class ApiService {
 
     const token = this.getToken();
     const response = await fetch(`${this.baseURL}/communities/${communityId}/avatar`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+    }
+    return data;
+  }
+
+  async deleteCommunityAvatar(communityId: string) {
+    return this.request(`/communities/${communityId}/avatar`, {
+      method: 'DELETE',
+    });
+  }
 
   async getCommunityById(communityId: string): Promise<{
     success: boolean;
@@ -381,14 +429,11 @@ class ApiService {
     community: Community;
     message: string;
   }> {
-
+    return this.request(`/communities/${communityId}/join`, {
       method: 'POST',
     });
   }
 
-  async deleteCommunityAvatar(communityId: string) {
-    return this.request(`/communities/${communityId}/avatar`, {
-      method: 'DELETE',
   async leaveCommunity(communityId: string): Promise<{
     success: boolean;
     message: string;
@@ -453,32 +498,32 @@ class ApiService {
 
   // Community Post methods
   async getCommunityPosts(communityId: string, params?: {
-  search?: string;
-  type?: string;
-  sortBy?: string;
-  page?: number;
-  limit?: number;
-}): Promise<{
-  success: boolean;
-  posts: CommunityPost[];
-  pagination: any;
-}> {
-  const queryParams = new URLSearchParams();
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        queryParams.append(key, String(value));
-      }
-    });
+    search?: string;
+    type?: string;
+    sortBy?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    success: boolean;
+    posts: CommunityPost[];
+    pagination: any;
+  }> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+    
+    const queryString = queryParams.toString();
+    const endpoint = queryString 
+      ? `/communities/${communityId}/posts?${queryString}` 
+      : `/communities/${communityId}/posts`;
+    
+    return this.request(endpoint);
   }
-  
-  const queryString = queryParams.toString();
-  const endpoint = queryString 
-    ? `/communities/${communityId}/posts?${queryString}` 
-    : `/communities/${communityId}/posts`;
-  
-  return this.request(endpoint);
-}
 
   async createCommunityPost(postData: {
     title: string;
@@ -528,15 +573,6 @@ class ApiService {
     });
   }
 
-  async updateCommunity(communityId: string, updateData: any) {
-    return this.request(`/communities/${communityId}`, {
-      method: 'PUT',
-      body: JSON.stringify(updateData),
-    });
-  }
-
-  async deleteCommunity(communityId: string) {
-    return this.request(`/communities/${communityId}`, {
   async deletePost(postId: string): Promise<{
     success: boolean;
     message: string;
@@ -565,10 +601,6 @@ class ApiService {
       method: 'POST',
     });
   }
-
-  async uploadFile(file: File, endpoint: string) {
-    const formData = new FormData();
-    formData.append('file', file);
 
   // Study Materials methods
   async getStudyMaterials(params?: any): Promise<{
@@ -640,120 +672,140 @@ class ApiService {
     });
   }
 
-      async getMeetups(params?: {
-  type?: string;
-  status?: string;
-  community?: string;
-  search?: string;
-  page?: number;
-  limit?: number;
-  sortBy?: string;
-}): Promise<{
-  success: boolean;
-  meetups: any[];
-  pagination: any;
-}> {
-  const queryParams = new URLSearchParams();
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        queryParams.append(key, String(value));
-      }
+  // Meetup methods
+  async getMeetups(params?: {
+    type?: string;
+    status?: string;
+    community?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+  }): Promise<{
+    success: boolean;
+    meetups: Meetup[];
+    pagination: any;
+  }> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+    
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `/meetups?${queryString}` : '/meetups';
+    
+    return this.request(endpoint);
+  }
+
+  async createMeetup(meetupData: {
+    title: string;
+    description: string;
+    type: string;
+    location: {
+      type: string;
+      venue?: string;
+      address?: string;
+      meetingLink?: string;
+      coordinates?: {
+        latitude: number;
+        longitude: number;
+      };
+    };
+    dateTime: {
+      start: Date;
+      end: Date;
+    };
+    maxAttendees?: number;
+    community?: string;
+    tags?: string[];
+    requirements?: string;
+    isPublic?: boolean;
+    recurring?: {
+      isRecurring: boolean;
+      pattern?: string;
+      endDate?: Date;
+    };
+  }): Promise<{
+    success: boolean;
+    meetup: Meetup;
+    message: string;
+  }> {
+    return this.request('/meetups', {
+      method: 'POST',
+      body: JSON.stringify(meetupData),
     });
   }
-  
-  const queryString = queryParams.toString();
-  const endpoint = queryString ? `/meetups?${queryString}` : '/meetups';
-  
-  return this.request(endpoint);
-}
 
-async createMeetup(meetupData: {
-  title: string;
-  description: string;
-  type: string;
-  location: {
-    type: string;
-    venue?: string;
-    address?: string;
-    meetingLink?: string;
-    coordinates?: {
-      latitude: number;
-      longitude: number;
-    };
-  };
-  dateTime: {
-    start: Date;
-    end: Date;
-  };
-  maxAttendees?: number;
-  community?: string;
-  tags?: string[];
-  requirements?: string;
-  isPublic?: boolean;
-  recurring?: {
-    isRecurring: boolean;
-    pattern?: string;
-    endDate?: Date;
-  };
-}): Promise<{
-  success: boolean;
-  meetup: any;
-  message: string;
-}> {
-  return this.request('/meetups', {
-    method: 'POST',
-    body: JSON.stringify(meetupData),
-  });
-}
+  async joinMeetup(meetupId: string): Promise<{
+    success: boolean;
+    meetup: Meetup;
+    message: string;
+  }> {
+    return this.request(`/meetups/${meetupId}/join`, {
+      method: 'POST',
+    });
+  }
 
-async joinMeetup(meetupId: string): Promise<{
-  success: boolean;
-  meetup: any;
-  message: string;
-}> {
-  return this.request(`/meetups/${meetupId}/join`, {
-    method: 'POST',
-  });
-}
+  async leaveMeetup(meetupId: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    return this.request(`/meetups/${meetupId}/leave`, {
+      method: 'POST',
+    });
+  }
 
-async leaveMeetup(meetupId: string): Promise<{
-  success: boolean;
-  message: string;
-}> {
-  return this.request(`/meetups/${meetupId}/leave`, {
-    method: 'POST',
-  });
-}
+  async getMeetupById(meetupId: string): Promise<{
+    success: boolean;
+    meetup: Meetup;
+  }> {
+    return this.request(`/meetups/${meetupId}`);
+  }
 
-async getMeetupById(meetupId: string): Promise<{
-  success: boolean;
-  meetup: any;
-}> {
-  return this.request(`/meetups/${meetupId}`);
-}
+  async updateMeetup(meetupId: string, updateData: any): Promise<{
+    success: boolean;
+    meetup: Meetup;
+    message: string;
+  }> {
+    return this.request(`/meetups/${meetupId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData),
+    });
+  }
 
-async updateMeetup(meetupId: string, updateData: any): Promise<{
-  success: boolean;
-  meetup: any;
-  message: string;
-}> {
-  return this.request(`/meetups/${meetupId}`, {
-    method: 'PUT',
-    body: JSON.stringify(updateData),
-  });
-}
+  async deleteMeetup(meetupId: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    return this.request(`/meetups/${meetupId}`, {
+      method: 'DELETE',
+    });
+  }
 
-async deleteMeetup(meetupId: string): Promise<{
-  success: boolean;
-  message: string;
-}> {
-  return this.request(`/meetups/${meetupId}`, {
-    method: 'DELETE',
-  });
-}
+  // File upload utility
+  async uploadFile(file: File, endpoint: string) {
+    const formData = new FormData();
+    formData.append('file', file);
 
-  
+    const token = this.getToken();
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+    }
+    return data;
+  }
 }
 
 export const apiService = new ApiService();

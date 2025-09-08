@@ -47,11 +47,9 @@ const UserSchema = new mongoose.Schema({
       type: String,
       maxlength: [500, 'Bio cannot exceed 500 characters']
     },
-
     // Added for the Profile screen
     location: { type: String, trim: true },
     joinedDate: { type: String }, // ISO string as used by the UI
-
     university: {
       type: String,
       required: [true, 'Please provide university name']
@@ -81,7 +79,6 @@ const UserSchema = new mongoose.Schema({
   }],
   // Updated achievement structure to match the achievement controller
   achievements: [{
-
     achievementId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Achievement',
@@ -99,17 +96,6 @@ const UserSchema = new mongoose.Schema({
       default: 0
     }
   }],
-
-  achievement: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Achievement'
-  },
-  earnedAt: {
-    type: Date,
-    default: Date.now
-  }
-}],
-
   points: {
     type: Number,
     default: 0
@@ -162,5 +148,3 @@ UserSchema.virtual('badges').get(function() {
 
 // Prevent model overwrite error
 module.exports = mongoose.models.User || mongoose.model('User', UserSchema);
-
-

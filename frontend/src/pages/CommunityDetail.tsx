@@ -10,70 +10,14 @@ import {
   Heart, 
   Reply,
   Search,
-  Filter,
-  FileText,
   HelpCircle,
   Megaphone,
   BookOpen
 } from 'lucide-react';
-import { apiService, User } from '../services/api';
+import { apiService, User, Community, CommunityPost } from '../services/api';
 
 interface CommunityDetailProps {
   user: User;
-}
-
-interface CommunityPost {
-  id: string;
-  title: string;
-  content: string;
-  author: {
-    id: string;
-    username: string;
-    profile: {
-      firstName: string;
-      lastName: string;
-      avatar: string;
-    };
-  };
-  type: 'discussion' | 'question' | 'announcement' | 'resource';
-  tags: string[];
-  likes: string[];
-  replies: Array<{
-    id: string;
-    author: {
-      id: string;
-      username: string;
-      profile: { firstName: string; lastName: string; avatar: string; };
-    };
-    content: string;
-    likes: string[];
-    createdAt: string;
-  }>;
-  isPinned: boolean;
-  isLocked: boolean;
-  viewCount: number;
-  createdAt: string;
-}
-
-interface Community {
-  id: string;
-  name: string;
-  description: string;
-  avatar: string;
-  category: string;
-  memberCount: number;
-  creator: {
-    username: string;
-    profile: { firstName: string; lastName: string; };
-  };
-  members: Array<{
-    user: string;
-    role: string;
-    joinedAt: string;
-  }>;
-  university: string;
-  course?: string;
-  tags: string[];
 }
 
 export function CommunityDetail({ user }: CommunityDetailProps) {
@@ -93,7 +37,7 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
   const [postForm, setPostForm] = useState({
     title: '',
     content: '',
-    type: 'discussion' as const,
+    type: 'discussion' as 'discussion' | 'question' | 'announcement' | 'resource',
     tags: ''
   });
 
@@ -110,9 +54,14 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
     }
   }, [communityId]);
 
+  useEffect(() => {
+    if (communityId) {
+      fetchCommunityPosts();
+    }
+  }, [searchTerm, filterType, sortBy]);
+
   const fetchCommunityDetails = async () => {
     try {
-      // This would be a new API endpoint
       const response = await apiService.getCommunityById(communityId!);
       if (response.success) {
         setCommunity(response.community);
@@ -125,7 +74,6 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
   const fetchCommunityPosts = async () => {
     try {
       setLoading(true);
-      // This would be a new API endpoint
       const response = await apiService.getCommunityPosts(communityId!, {
         search: searchTerm,
         type: filterType !== 'all' ? filterType : undefined,
@@ -145,7 +93,9 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
   const handleCreatePost = async () => {
     try {
       const postData = {
-        ...postForm,
+        title: postForm.title,
+        content: postForm.content,
+        type: postForm.type,
         communityId: communityId!,
         tags: postForm.tags.split(',').map(tag => tag.trim()).filter(Boolean)
       };
@@ -165,6 +115,8 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
 
   const handleReply = async (postId: string) => {
     try {
+      if (!replyForm.content.trim()) return;
+      
       const response = await apiService.replyToPost(postId, { content: replyForm.content });
       
       if (response.success) {
@@ -183,6 +135,21 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
       await fetchCommunityPosts();
     } catch (error) {
       console.error('Failed to like post:', error);
+    }
+  };
+
+  const handleJoinCommunity = async () => {
+    if (!communityId) return;
+    
+    try {
+      const response = await apiService.joinCommunity(communityId);
+      if (response.success) {
+        await fetchCommunityDetails();
+        await fetchCommunityPosts();
+      }
+    } catch (error: any) {
+      console.error('Failed to join community:', error);
+      alert(error.message || 'Failed to join community');
     }
   };
 
@@ -208,15 +175,49 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
     const date = new Date(dateString);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
     
     if (days > 0) return `${days}d ago`;
     if (hours > 0) return `${hours}h ago`;
+    if (minutes > 0) return `${minutes}m ago`;
     return 'Just now';
   };
 
-  const isMember = community?.members.some(member => member.user === user.id);
+  // Check if user is a member - handle different data structures
+  const isMember = community?.isMember || 
+    community?.members?.some(member => {
+      const memberId = typeof member.user === 'string' 
+        ? member.user 
+        : (member.user as any)?._id || (member.user as any)?.id;
+      return memberId === user.id || memberId === user._id;
+    });
+
+  // Get creator name - handle different data structures
+  const getCreatorName = () => {
+    if (!community?.creator) return 'Unknown';
+    
+    if (typeof community.creator === 'string') {
+      return 'Community Creator';
+    }
+    
+    const creator = community.creator as any;
+    if (creator.profile) {
+      return `${creator.profile.firstName} ${creator.profile.lastName}`;
+    }
+    
+    return creator.username || 'Community Creator';
+  };
+
+  // Check if post is liked by user
+  const isPostLiked = (post: CommunityPost) => {
+    return post.likes?.some(
+      (like: any) =>
+        (typeof like === 'string' && (like === user.id || like === user._id)) ||
+        (typeof like === 'object' && (like.user === user.id || like.user === user._id))
+    );
+  };
 
   if (loading && !community) {
     return (
@@ -283,7 +284,7 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
                   <MessageCircle className="w-4 h-4" />
                   <span>{posts.length} posts</span>
                 </div>
-                <span>Created by {community.creator.profile.firstName} {community.creator.profile.lastName}</span>
+                <span>Created by {getCreatorName()}</span>
               </div>
             </div>
 
@@ -305,7 +306,7 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
           <h3 className="text-lg font-semibold text-yellow-800 mb-2">Join this community to participate</h3>
           <p className="text-yellow-700 mb-4">You need to be a member to view posts and discussions</p>
           <button
-            onClick={() => navigate('/communities')}
+            onClick={handleJoinCommunity}
             className="bg-yellow-600 text-white px-6 py-2 rounded-lg hover:bg-yellow-700 transition-colors"
           >
             Join Community
@@ -351,7 +352,11 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
 
           {/* Posts List */}
           <div className="space-y-4">
-            {posts.length === 0 ? (
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+              </div>
+            ) : posts.length === 0 ? (
               <div className="text-center py-12 bg-white/60 backdrop-blur-sm rounded-2xl">
                 <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-xl text-gray-900 mb-2">No posts yet</h3>
@@ -366,19 +371,23 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
             ) : (
               posts.map((post) => {
                 const TypeIcon = getPostTypeIcon(post.type);
+                const postLiked = isPostLiked(post);
+                
                 return (
                   <div key={post.id} className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6 hover:shadow-xl transition-all duration-300">
                     <div className="flex items-start space-x-4">
                       <img
-                        src={post.author.profile.avatar}
-                        alt={post.author.username}
+                        src={post.author?.profile?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'}
+                        alt={post.author?.username || 'User'}
                         className="w-12 h-12 rounded-full ring-2 ring-purple-200"
                       />
                       
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
                           <span className="font-semibold text-gray-900">
-                            {post.author.profile.firstName} {post.author.profile.lastName}
+                            {post.author?.profile ? 
+                              `${post.author.profile.firstName} ${post.author.profile.lastName}` : 
+                              post.author?.username || 'Anonymous'}
                           </span>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getPostTypeColor(post.type)}`}>
                             <TypeIcon className="w-3 h-3" />
@@ -392,7 +401,7 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">{post.title}</h3>
                         <p className="text-gray-700 mb-4 leading-relaxed">{post.content}</p>
                         
-                        {post.tags.length > 0 && (
+                        {post.tags && post.tags.length > 0 && (
                           <div className="flex items-center space-x-2 mb-4">
                             {post.tags.map((tag) => (
                               <span key={tag} className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs">
@@ -407,36 +416,38 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
                             onClick={() => handleLikePost(post.id)}
                             className="flex items-center space-x-2 text-gray-500 hover:text-red-500 transition-colors"
                           >
-                            <Heart className={`w-5 h-5 ${post.likes.includes(user.id) ? 'fill-red-500 text-red-500' : ''}`} />
-                            <span>{post.likes.length}</span>
+                            <Heart className={`w-5 h-5 ${postLiked ? 'fill-red-500 text-red-500' : ''}`} />
+                            <span>{post.likes?.length || 0}</span>
                           </button>
                           
                           <button
-                            onClick={() => setSelectedPost(selectedPost === post ? null : post)}
+                            onClick={() => setSelectedPost(selectedPost?.id === post.id ? null : post)}
                             className="flex items-center space-x-2 text-gray-500 hover:text-blue-500 transition-colors"
                           >
                             <Reply className="w-5 h-5" />
-                            <span>{post.replies.length} replies</span>
+                            <span>{post.replies?.length || 0} replies</span>
                           </button>
                           
-                          <span className="text-gray-500 text-sm">{post.viewCount} views</span>
+                          <span className="text-gray-500 text-sm">{post.viewCount || 0} views</span>
                         </div>
 
                         {/* Replies Section */}
-                        {selectedPost === post && (
+                        {selectedPost?.id === post.id && (
                           <div className="mt-6 border-t border-gray-200 pt-6">
                             <div className="space-y-4 mb-6">
-                              {post.replies.map((reply) => (
-                                <div key={reply.id} className="flex items-start space-x-3 bg-gray-50 rounded-lg p-4">
+                              {post.replies && post.replies.map((reply) => (
+                                <div key={reply.id || reply._id} className="flex items-start space-x-3 bg-gray-50 rounded-lg p-4">
                                   <img
-                                    src={reply.author.profile.avatar}
-                                    alt={reply.author.username}
+                                    src={reply.author?.profile?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=reply'}
+                                    alt={reply.author?.username || 'User'}
                                     className="w-8 h-8 rounded-full"
                                   />
                                   <div className="flex-1">
                                     <div className="flex items-center space-x-2 mb-1">
                                       <span className="font-medium text-sm">
-                                        {reply.author.profile.firstName} {reply.author.profile.lastName}
+                                        {reply.author?.profile ? 
+                                          `${reply.author.profile.firstName} ${reply.author.profile.lastName}` : 
+                                          reply.author?.username || 'Anonymous'}
                                       </span>
                                       <span className="text-xs text-gray-500">{formatTimeAgo(reply.createdAt)}</span>
                                     </div>
@@ -444,31 +455,44 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
                                   </div>
                                 </div>
                               ))}
+                              {(!post.replies || post.replies.length === 0) && (
+                                <p className="text-gray-500 text-sm text-center py-4">No replies yet. Be the first to reply!</p>
+                              )}
                             </div>
                             
-                            <div className="flex space-x-3">
-                              <img
-                                src={user.profile.avatar}
-                                alt={user.username}
-                                className="w-8 h-8 rounded-full"
-                              />
-                              <div className="flex-1 flex space-x-2">
-                                <input
-                                  type="text"
-                                  placeholder="Write a reply..."
-                                  value={replyForm.content}
-                                  onChange={(e) => setReplyForm({ content: e.target.value, postId: post.id })}
-                                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            {!post.isLocked && (
+                              <div className="flex space-x-3">
+                                <img
+                                  src={user.profile?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=user'}
+                                  alt={user.username}
+                                  className="w-8 h-8 rounded-full"
                                 />
-                                <button
-                                  onClick={() => handleReply(post.id)}
-                                  disabled={!replyForm.content.trim()}
-                                  className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  Reply
-                                </button>
+                                <div className="flex-1 flex space-x-2">
+                                  <input
+                                    type="text"
+                                    placeholder="Write a reply..."
+                                    value={replyForm.postId === post.id ? replyForm.content : ''}
+                                    onChange={(e) => setReplyForm({ content: e.target.value, postId: post.id })}
+                                    onKeyPress={(e) => {
+                                      if (e.key === 'Enter' && replyForm.content.trim()) {
+                                        handleReply(post.id);
+                                      }
+                                    }}
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                  />
+                                  <button
+                                    onClick={() => handleReply(post.id)}
+                                    disabled={!replyForm.content.trim() || replyForm.postId !== post.id}
+                                    className="bg-purple-600 text-gray-600 px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    Reply
+                                  </button>
+                                </div>
                               </div>
-                            </div>
+                            )}
+                            {post.isLocked && (
+                              <p className="text-gray-500 text-sm text-center py-4">This post is locked and cannot receive new replies.</p>
+                            )}
                           </div>
                         )}
                       </div>
@@ -546,7 +570,7 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
               <button
                 onClick={handleCreatePost}
                 disabled={!postForm.title.trim() || !postForm.content.trim()}
-                className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-purple-600 text-gray-600 px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Create Post
               </button>

@@ -4,9 +4,13 @@ const {
   createPost,
   replyToPost,
   toggleLikePost,
-  getPost
-} = require('../controllers/postController');
-const { protect } = require('../middleware/auth');
+  getPost,
+  deletePost,
+  togglePinPost,
+  toggleLockPost,
+  getCommunityPosts
+} = require('../src/controllers/postController');
+const { protect } = require('../src/middleware/auth');
 
 const router = express.Router();
 
@@ -31,7 +35,10 @@ const postValidation = [
 // Routes
 router.post('/', protect, postValidation, createPost);
 router.get('/:id', protect, getPost);
+router.delete('/:id', protect, deletePost);
 router.post('/:id/reply', protect, replyToPost);
 router.post('/:id/like', protect, toggleLikePost);
+router.post('/:id/pin', protect, togglePinPost);
+router.post('/:id/lock', protect, toggleLockPost);
 
 module.exports = router;

@@ -8,14 +8,14 @@ const {
   getCommunityById,
   updateCommunity,
   deleteCommunity,
-  getCommunityMembers
+  getCommunityMembers,
+  getCommunityPosts
 } = require('../src/controllers/communityController');
-const { getCommunityPosts } = require('../src/controllers/postController');
 const { protect } = require('../src/middleware/auth');
 
 const router = express.Router();
 
-// Validation for community creation
+// Community validation
 const communityValidation = [
   body('name')
     .trim()
@@ -37,28 +37,22 @@ const communityValidation = [
       'Arts & Culture',
       'Other'
     ])
-    .withMessage('Please select a valid category'),
+    .withMessage('Invalid community category'),
   body('university')
     .trim()
     .notEmpty()
-    .withMessage('University is required'),
-  body('maxMembers')
-    .optional()
-    .isInt({ min: 5, max: 500 })
-    .withMessage('Max members must be between 5-500')
+    .withMessage('University is required')
 ];
 
-// Community Routes
+// Routes
 router.get('/', protect, getCommunities);
 router.post('/', protect, communityValidation, createCommunity);
 router.get('/:id', protect, getCommunityById);
-router.post('/:id/join', protect, joinCommunity);
-router.post('/:id/leave', protect, leaveCommunity);
 router.put('/:id', protect, updateCommunity);
 router.delete('/:id', protect, deleteCommunity);
+router.post('/:id/join', protect, joinCommunity);
+router.post('/:id/leave', protect, leaveCommunity);
 router.get('/:id/members', protect, getCommunityMembers);
-
-// Community Posts Routes
 router.get('/:id/posts', protect, getCommunityPosts);
 
 module.exports = router;

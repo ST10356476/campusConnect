@@ -3,102 +3,6 @@ const Community = require('../models/Community');
 const User = require('../models/User');
 const { validationResult } = require('express-validator');
 
-// @desc    Get posts for a community
-// @route   GET /api/communities/:id/posts
-// @access  Private
-const getCommunityPosts = async (req, res) => {
-  try {
-    const { id: communityId } = req.params;
-    const {
-      search,
-      type,
-      sortBy = 'createdAt',
-      page = 1,
-      limit = 20
-    } = req.query;
-
-    // Check if community exists and user is a member
-    const community = await Community.findById(communityId);
-    if (!community) {
-      return res.status(404).json({ message: 'Community not found' });
-    }
-
-    const isMember = community.members.some(
-      member => member.user.toString() === req.user.id
-    );
-
-    if (!isMember) {
-      return res.status(403).json({ message: 'You must be a member to view posts' });
-    }
-
-    // Build query
-    const query = { community: communityId };
-    
-    if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { content: { $regex: search, $options: 'i' } },
-        { tags: { $in: [new RegExp(search, 'i')] } }
-      ];
-    }
-    
-    if (type && type !== 'all') {
-      query.type = type;
-    }
-
-    // Sort options
-    let sortOptions = {};
-    switch (sortBy) {
-      case 'popular':
-        sortOptions = { 'likes.length': -1, createdAt: -1 };
-        break;
-      case 'replies':
-        sortOptions = { 'replies.length': -1, createdAt: -1 };
-        break;
-      default:
-        sortOptions = { isPinned: -1, createdAt: -1 };
-    }
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    
-    const posts = await CommunityPost.find(query)
-      .populate('author', 'username profile.firstName profile.lastName profile.avatar')
-      .populate('replies.author', 'username profile.firstName profile.lastName profile.avatar')
-      .sort(sortOptions)
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    const total = await CommunityPost.countDocuments(query);
-
-    // Transform posts to include id field
-    const transformedPosts = posts.map(post => ({
-      ...post.toObject(),
-      id: post._id.toString(),
-      replies: post.replies.map(reply => ({
-        ...reply.toObject(),
-        id: reply._id.toString()
-      }))
-    }));
-
-    res.json({
-      success: true,
-      posts: transformedPosts,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(total / parseInt(limit)),
-        totalPosts: total,
-        hasMore: skip + posts.length < total
-      }
-    });
-  } catch (error) {
-    console.error('Get community posts error:', error);
-    res.status(500).json({
-      message: 'Server error fetching posts',
-      error: error.message
-    });
-  }
-};
-
 // @desc    Create new post
 // @route   POST /api/posts
 // @access  Private
@@ -107,6 +11,7 @@ const createPost = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
+        success: false,
         message: 'Validation failed',
         errors: errors.array()
       });
@@ -120,27 +25,46 @@ const createPost = async (req, res) => {
       communityId
     } = req.body;
 
-    // Check if community exists and user is a member
-    const community = await Community.findById(communityId);
-    if (!community) {
-      return res.status(404).json({ message: 'Community not found' });
+    // Validate community ID
+    if (!communityId || !communityId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid community ID' 
+      });
     }
 
+    // Check if community exists
+    const community = await Community.findById(communityId);
+    if (!community) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Community not found' 
+      });
+    }
+
+    // Check if user is a member
     const isMember = community.members.some(
       member => member.user.toString() === req.user.id
     );
 
     if (!isMember) {
-      return res.status(403).json({ message: 'You must be a member to create posts' });
+      return res.status(403).json({ 
+        success: false,
+        message: 'You must be a member to create posts' 
+      });
     }
 
+    // Create the post
     const post = await CommunityPost.create({
-      title,
-      content,
+      title: title.trim(),
+      content: content.trim(),
       type: type || 'discussion',
       tags: tags || [],
       community: communityId,
-      author: req.user.id
+      author: req.user.id,
+      isPinned: false,
+      isLocked: false,
+      viewCount: 0
     });
 
     // Add post to community's posts array
@@ -148,6 +72,7 @@ const createPost = async (req, res) => {
       $push: { posts: post._id }
     });
 
+    // Populate author details
     const populatedPost = await CommunityPost.findById(post._id)
       .populate('author', 'username profile.firstName profile.lastName profile.avatar')
       .populate('replies.author', 'username profile.firstName profile.lastName profile.avatar');
@@ -157,12 +82,15 @@ const createPost = async (req, res) => {
       message: 'Post created successfully',
       post: {
         ...populatedPost.toObject(),
-        id: populatedPost._id.toString()
+        id: populatedPost._id.toString(),
+        likes: [],
+        isLiked: false
       }
     });
   } catch (error) {
     console.error('Create post error:', error);
     res.status(500).json({
+      success: false,
       message: 'Server error creating post',
       error: error.message
     });
@@ -177,13 +105,29 @@ const replyToPost = async (req, res) => {
     const { content } = req.body;
     const postId = req.params.id;
 
-    if (!content || !content.trim()) {
-      return res.status(400).json({ message: 'Reply content is required' });
+    // Validate post ID
+    if (!postId || !postId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid post ID' 
+      });
     }
 
+    // Validate content
+    if (!content || !content.trim()) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Reply content is required' 
+      });
+    }
+
+    // Find the post
     const post = await CommunityPost.findById(postId);
     if (!post) {
-      return res.status(404).json({ message: 'Post not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Post not found' 
+      });
     }
 
     // Check if user is member of the community
@@ -193,42 +137,58 @@ const replyToPost = async (req, res) => {
     );
 
     if (!isMember) {
-      return res.status(403).json({ message: 'You must be a member to reply' });
+      return res.status(403).json({ 
+        success: false,
+        message: 'You must be a member to reply' 
+      });
     }
 
     // Check if post is locked
     if (post.isLocked) {
-      return res.status(403).json({ message: 'This post is locked' });
+      return res.status(403).json({ 
+        success: false,
+        message: 'This post is locked' 
+      });
     }
 
+    // Add the reply
     const reply = {
       author: req.user.id,
       content: content.trim(),
+      likes: [],
       createdAt: new Date()
     };
 
     post.replies.push(reply);
     await post.save();
 
+    // Get updated post with populated data
     const updatedPost = await CommunityPost.findById(postId)
       .populate('author', 'username profile.firstName profile.lastName profile.avatar')
       .populate('replies.author', 'username profile.firstName profile.lastName profile.avatar');
 
+    // Transform the response
+    const postObj = updatedPost.toObject();
+    const transformedPost = {
+      ...postObj,
+      id: postObj._id.toString(),
+      likes: postObj.likes.map(like => like.user.toString()),
+      isLiked: postObj.likes.some(like => like.user.toString() === req.user.id),
+      replies: postObj.replies.map(reply => ({
+        ...reply,
+        id: reply._id ? reply._id.toString() : undefined
+      }))
+    };
+
     res.json({
       success: true,
       message: 'Reply added successfully',
-      post: {
-        ...updatedPost.toObject(),
-        id: updatedPost._id.toString(),
-        replies: updatedPost.replies.map(reply => ({
-          ...reply.toObject(),
-          id: reply._id.toString()
-        }))
-      }
+      post: transformedPost
     });
   } catch (error) {
     console.error('Reply to post error:', error);
     res.status(500).json({
+      success: false,
       message: 'Server error adding reply',
       error: error.message
     });
@@ -243,9 +203,21 @@ const toggleLikePost = async (req, res) => {
     const postId = req.params.id;
     const userId = req.user.id;
 
+    // Validate post ID
+    if (!postId || !postId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid post ID' 
+      });
+    }
+
+    // Find the post
     const post = await CommunityPost.findById(postId);
     if (!post) {
-      return res.status(404).json({ message: 'Post not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Post not found' 
+      });
     }
 
     // Check if user is member of the community
@@ -255,30 +227,43 @@ const toggleLikePost = async (req, res) => {
     );
 
     if (!isMember) {
-      return res.status(403).json({ message: 'You must be a member to like posts' });
+      return res.status(403).json({ 
+        success: false,
+        message: 'You must be a member to like posts' 
+      });
     }
 
-    const existingLike = post.likes.find(like => like.user.toString() === userId);
+    // Check if user already liked the post
+    const existingLikeIndex = post.likes.findIndex(
+      like => like.user.toString() === userId
+    );
 
-    if (existingLike) {
-      // Unlike
-      post.likes = post.likes.filter(like => like.user.toString() !== userId);
+    let isLiked;
+    if (existingLikeIndex > -1) {
+      // Unlike: remove the like
+      post.likes.splice(existingLikeIndex, 1);
+      isLiked = false;
     } else {
-      // Like
-      post.likes.push({ user: userId, createdAt: new Date() });
+      // Like: add the like
+      post.likes.push({ 
+        user: userId, 
+        createdAt: new Date() 
+      });
+      isLiked = true;
     }
 
     await post.save();
 
     res.json({
       success: true,
-      message: existingLike ? 'Post unliked' : 'Post liked',
+      message: isLiked ? 'Post liked' : 'Post unliked',
       likeCount: post.likes.length,
-      isLiked: !existingLike
+      isLiked
     });
   } catch (error) {
     console.error('Toggle like post error:', error);
     res.status(500).json({
+      success: false,
       message: 'Server error toggling like',
       error: error.message
     });
@@ -292,13 +277,25 @@ const getPost = async (req, res) => {
   try {
     const postId = req.params.id;
 
+    // Validate post ID
+    if (!postId || !postId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid post ID' 
+      });
+    }
+
+    // Find and populate the post
     const post = await CommunityPost.findById(postId)
       .populate('author', 'username profile.firstName profile.lastName profile.avatar')
       .populate('replies.author', 'username profile.firstName profile.lastName profile.avatar')
       .populate('community', 'name');
 
     if (!post) {
-      return res.status(404).json({ message: 'Post not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Post not found' 
+      });
     }
 
     // Check if user is member of the community
@@ -307,38 +304,222 @@ const getPost = async (req, res) => {
       member => member.user.toString() === req.user.id
     );
 
-    if (!isMember) {
-      return res.status(403).json({ message: 'You must be a member to view this post' });
+    if (!isMember && community.isPrivate) {
+      return res.status(403).json({ 
+        success: false,
+        message: 'You must be a member to view this post' 
+      });
     }
 
     // Increment view count
     post.viewCount = (post.viewCount || 0) + 1;
     await post.save();
 
+    // Transform the response
+    const postObj = post.toObject();
+    const transformedPost = {
+      ...postObj,
+      id: postObj._id.toString(),
+      likes: postObj.likes.map(like => like.user.toString()),
+      isLiked: postObj.likes.some(like => like.user.toString() === req.user.id),
+      replies: postObj.replies.map(reply => ({
+        ...reply,
+        id: reply._id ? reply._id.toString() : undefined
+      }))
+    };
+
     res.json({
       success: true,
-      post: {
-        ...post.toObject(),
-        id: post._id.toString(),
-        replies: post.replies.map(reply => ({
-          ...reply.toObject(),
-          id: reply._id.toString()
-        }))
-      }
+      post: transformedPost
     });
   } catch (error) {
     console.error('Get post error:', error);
     res.status(500).json({
+      success: false,
       message: 'Server error fetching post',
       error: error.message
     });
   }
 };
 
+// @desc    Delete post
+// @route   DELETE /api/posts/:id
+// @access  Private (Author or Admin only)
+const deletePost = async (req, res) => {
+  try {
+    const postId = req.params.id;
+
+    // Validate post ID
+    if (!postId || !postId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid post ID' 
+      });
+    }
+
+    // Find the post
+    const post = await CommunityPost.findById(postId);
+    if (!post) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Post not found' 
+      });
+    }
+
+    // Check if user is the author or community admin
+    const community = await Community.findById(post.community);
+    const isAuthor = post.author.toString() === req.user.id;
+    const isAdmin = community.admins.some(
+      admin => admin.toString() === req.user.id
+    );
+
+    if (!isAuthor && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have permission to delete this post'
+      });
+    }
+
+    // Remove post from community's posts array
+    await Community.findByIdAndUpdate(post.community, {
+      $pull: { posts: post._id }
+    });
+
+    // Delete the post
+    await CommunityPost.findByIdAndDelete(postId);
+
+    res.json({
+      success: true,
+      message: 'Post deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete post error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error deleting post',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Pin/Unpin post
+// @route   POST /api/posts/:id/pin
+// @access  Private (Admin only)
+const togglePinPost = async (req, res) => {
+  try {
+    const postId = req.params.id;
+
+    // Validate post ID
+    if (!postId || !postId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid post ID' 
+      });
+    }
+
+    // Find the post
+    const post = await CommunityPost.findById(postId);
+    if (!post) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Post not found' 
+      });
+    }
+
+    // Check if user is community admin
+    const community = await Community.findById(post.community);
+    const isAdmin = community.admins.some(
+      admin => admin.toString() === req.user.id
+    );
+
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admins can pin posts'
+      });
+    }
+
+    // Toggle pin status
+    post.isPinned = !post.isPinned;
+    await post.save();
+
+    res.json({
+      success: true,
+      message: post.isPinned ? 'Post pinned' : 'Post unpinned',
+      isPinned: post.isPinned
+    });
+  } catch (error) {
+    console.error('Toggle pin post error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error toggling pin',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Lock/Unlock post
+// @route   POST /api/posts/:id/lock
+// @access  Private (Admin only)
+const toggleLockPost = async (req, res) => {
+  try {
+    const postId = req.params.id;
+
+    // Validate post ID
+    if (!postId || !postId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid post ID' 
+      });
+    }
+
+    // Find the post
+    const post = await CommunityPost.findById(postId);
+    if (!post) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Post not found' 
+      });
+    }
+
+    // Check if user is community admin
+    const community = await Community.findById(post.community);
+    const isAdmin = community.admins.some(
+      admin => admin.toString() === req.user.id
+    );
+
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admins can lock posts'
+      });
+    }
+
+    // Toggle lock status
+    post.isLocked = !post.isLocked;
+    await post.save();
+
+    res.json({
+      success: true,
+      message: post.isLocked ? 'Post locked' : 'Post unlocked',
+      isLocked: post.isLocked
+    });
+  } catch (error) {
+    console.error('Toggle lock post error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error toggling lock',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
-  getCommunityPosts,
   createPost,
   replyToPost,
   toggleLikePost,
-  getPost
+  getPost,
+  deletePost,
+  togglePinPost,
+  toggleLockPost
 };

@@ -13,13 +13,16 @@ const CommunitySchema = new mongoose.Schema({
     maxlength: [1000, 'Description cannot exceed 1000 characters']
   },
   avatar: {
-  filename: String,
-  originalName: String,
-  url: { type: String, default: 'https://via.placeholder.com/200x200?text=Community' },
-  fileType: String,
-  fileSize: Number,
-  uploadedAt: Date
-},
+    filename: String,
+    originalName: String,
+    url: { 
+      type: String, 
+      default: 'https://via.placeholder.com/200x200?text=Community' 
+    },
+    fileType: String,
+    fileSize: Number,
+    uploadedAt: Date
+  },
   category: {
     type: String,
     required: [true, 'Please provide community category'],
@@ -55,8 +58,9 @@ const CommunitySchema = new mongoose.Schema({
   }],
   members: [{
     user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
+      type: mongoose.Schema.Types.ObjectId,  // Fixed: Changed from Object to ObjectId
+      ref: 'User',
+      required: true
     },
     joinedAt: {
       type: Date,
@@ -72,7 +76,6 @@ const CommunitySchema = new mongoose.Schema({
     type: String,
     trim: true
   }],
-
   posts: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'CommunityPost'
@@ -82,28 +85,64 @@ const CommunitySchema = new mongoose.Schema({
     required: [true, 'Please provide university']
   },
   course: String,
-  course: String,
   isActive: {
     type: Boolean,
     default: true
   },
-
-
   settings: {
-    allowPosts: { type: Boolean, default: true },
-    requireApproval: { type: Boolean, default: false },
-    allowFiles: { type: Boolean, default: true }
-  }  
-  }  
+    allowPosts: { 
+      type: Boolean, 
+      default: true 
+    },
+    requireApproval: { 
+      type: Boolean, 
+      default: false 
+    },
+    allowFiles: { 
+      type: Boolean, 
+      default: true 
+    }
+  }
 }, {
-  timestamps: true
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
 // Virtual for member count
 CommunitySchema.virtual('memberCount').get(function() {
   return this.members.length;
-  return this.members.length;
+});
+
+// Indexes for better query performance
+CommunitySchema.index({ name: 'text', description: 'text' });
+CommunitySchema.index({ category: 1, isActive: 1 });
+CommunitySchema.index({ university: 1 });
+CommunitySchema.index({ creator: 1 });
+CommunitySchema.index({ 'members.user': 1 });
+
+// Ensure creator is added to admins and members on save
+CommunitySchema.pre('save', function(next) {
+  if (this.isNew && this.creator) {
+    // Add creator to admins
+    if (!this.admins.includes(this.creator)) {
+      this.admins.push(this.creator);
+    }
+    
+    // Add creator to members if not already present
+    const isCreatorMember = this.members.some(member => 
+      member.user.toString() === this.creator.toString()
+    );
+    
+    if (!isCreatorMember) {
+      this.members.push({
+        user: this.creator,
+        role: 'moderator',
+        joinedAt: new Date()
+      });
+    }
+  }
+  next();
 });
 
 module.exports = mongoose.model('Community', CommunitySchema);

@@ -1,59 +1,7 @@
 const Community = require('../models/Community');
 const User = require('../models/User');
+const CommunityPost = require('../models/CommunityPost');
 const { validationResult } = require('express-validator');
-
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs').promises;
-
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: async (req, file, cb) => {
-    const uploadPath = path.join(__dirname, '../uploads/communities');
-    try {
-      await fs.mkdir(uploadPath, { recursive: true });
-    } catch (error) {
-      console.error('Error creating upload directory:', error);
-    }
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, `community-${uniqueSuffix}${ext}`);
-  }
-});
-
-const fileFilter = (req, file, cb) => {
-  // Only allow image files
-  if (file.mimetype.startsWith('image/')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only image files are allowed'), false);
-  }
-};
-
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: 50 * 1024 * 1024 // 50MB limit
-  }
-});
-
-// Helper function to delete old avatar file
-const deleteOldAvatar = async (avatarPath) => {
-  if (avatarPath) {
-    try {
-      const fullPath = path.join(__dirname, '../uploads/communities', path.basename(avatarPath));
-      await fs.unlink(fullPath);
-      console.log('Old avatar deleted:', fullPath);
-    } catch (error) {
-      console.error('Error deleting old avatar:', error);
-    }
-  }
-};
-
 
 // @desc    Get all communities
 // @route   GET /api/communities
@@ -97,13 +45,14 @@ const getCommunities = async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit));
 
-    console.log('Found ' + communities.length + ' communities');
-
-    // Transform communities to include id field and memberCount
+    // Transform communities
     const transformedCommunities = communities.map(community => ({
       ...community.toObject(),
       id: community._id.toString(),
-      memberCount: community.members.length
+      memberCount: community.members.length,
+      isMember: community.members.some(member => 
+        member.user._id.toString() === req.user.id
+      )
     }));
 
     const total = await Community.countDocuments(query);
@@ -153,17 +102,15 @@ const createCommunity = async (req, res) => {
       course
     } = req.body;
 
-    // Check if community with same name exists for this user
-    // Check if community with same name exists for this user
+    // Check if community with same name exists
     const existingCommunity = await Community.findOne({
-      name: { $regex: new RegExp('^' + name + '$', 'i') },
-      creator: req.user.id
+      name: { $regex: new RegExp('^' + name + '$', 'i') }
     });
 
     if (existingCommunity) {
       return res.status(400).json({
         success: false,
-        message: 'You already have a community with this name'
+        message: 'A community with this name already exists'
       });
     }
 
@@ -186,8 +133,6 @@ const createCommunity = async (req, res) => {
       isActive: true
     });
 
-    console.log('Community created successfully:', community._id);
-
     // Add community to user's communities
     await User.findByIdAndUpdate(req.user.id, {
       $push: { communities: community._id }
@@ -197,7 +142,6 @@ const createCommunity = async (req, res) => {
       .populate('creator', 'username profile.firstName profile.lastName profile.avatar')
       .populate('members.user', 'username profile.firstName profile.lastName profile.avatar');
 
-    // Transform response to include id and memberCount
     res.status(201).json({
       success: true,
       message: 'Community created successfully',
@@ -222,37 +166,12 @@ const createCommunity = async (req, res) => {
 // @access  Private
 const joinCommunity = async (req, res) => {
   try {
-    // Debug logging
-    console.log('Join community params:', req.params);
-    console.log('Join community body:', req.body);
-    console.log('Join community user:', req.user?.id);
+    const communityId = req.params.id;
 
-    // Get community ID from params or body
-    const communityId = req.params.id || req.params.communityId || req.body.communityId;
-
-    // Validate community ID
-    if (!communityId) {
-      console.error('No community ID provided');
-      return res.status(400).json({ 
-        success: false,
-        message: 'Community ID is required' 
-      });
-    }
-
-    if (communityId === 'undefined' || communityId === 'null') {
-      console.error('Invalid community ID:', communityId);
+    if (!communityId || !communityId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ 
         success: false,
         message: 'Invalid community ID' 
-      });
-    }
-
-    // Validate ObjectId format
-    if (!communityId.match(/^[0-9a-fA-F]{24}$/)) {
-      console.error('Invalid ObjectId format:', communityId);
-      return res.status(400).json({ 
-        success: false,
-        message: 'Invalid community ID format' 
       });
     }
 
@@ -303,7 +222,6 @@ const joinCommunity = async (req, res) => {
       .populate('creator', 'username profile.firstName profile.lastName profile.avatar')
       .populate('members.user', 'username profile.firstName profile.lastName profile.avatar');
 
-    // Transform the response to include id and memberCount
     res.json({
       success: true,
       message: 'Successfully joined community',
@@ -328,10 +246,7 @@ const joinCommunity = async (req, res) => {
 // @access  Private
 const leaveCommunity = async (req, res) => {
   try {
-    // Debug logging
-    console.log('Leave community params:', req.params);
-    
-    const communityId = req.params.id || req.params.communityId || req.body.communityId;
+    const communityId = req.params.id;
 
     if (!communityId || !communityId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ 
@@ -381,8 +296,6 @@ const leaveCommunity = async (req, res) => {
 
     await community.save();
 
-    console.log('User left community successfully:', { userId: req.user.id, communityId });
-
     // Remove community from user's communities
     await User.findByIdAndUpdate(req.user.id, {
       $pull: { communities: community._id }
@@ -402,12 +315,12 @@ const leaveCommunity = async (req, res) => {
   }
 };
 
-// @desc    Get community
+// @desc    Get community by ID
 // @route   GET /api/communities/:id
 // @access  Private
 const getCommunityById = async (req, res) => {
   try {
-    const communityId = req.params.id || req.params.communityId;
+    const communityId = req.params.id;
 
     if (!communityId || !communityId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ 
@@ -428,19 +341,10 @@ const getCommunityById = async (req, res) => {
       });
     }
 
-    // Check if user is a member - robust checking
+    // Check if user is a member
     const isMember = community.members.some(
       member => member.user._id.toString() === req.user.id
     );
-
-    console.log('Community membership check:', {
-      userId: req.user.id,
-      members: community.members.map(m => ({
-        userId: m.user._id ? m.user._id.toString() : m.user.toString(),
-        role: m.role
-      })),
-      isMember
-    });
 
     res.json({
       success: true,
@@ -448,7 +352,6 @@ const getCommunityById = async (req, res) => {
         ...community.toObject(),
         id: community._id.toString(),
         memberCount: community.members.length,
-        isMember
         isMember
       }
     });
@@ -464,7 +367,7 @@ const getCommunityById = async (req, res) => {
 
 // @desc    Update community
 // @route   PUT /api/communities/:id
-// @access  Private
+// @access  Private (Creator/Admin only)
 const updateCommunity = async (req, res) => {
   try {
     const communityId = req.params.id;
@@ -477,8 +380,6 @@ const updateCommunity = async (req, res) => {
       tags,
       course
     } = req.body;
-
-    console.log('Update community request:', { communityId, userId: req.user.id });
 
     if (!communityId || !communityId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ 
@@ -514,15 +415,13 @@ const updateCommunity = async (req, res) => {
     if (typeof isPrivate === 'boolean') community.isPrivate = isPrivate;
     if (maxMembers) community.maxMembers = maxMembers;
     if (tags) community.tags = tags;
-    if (course) community.course = course;
+    if (course !== undefined) community.course = course;
 
     await community.save();
 
     const updatedCommunity = await Community.findById(communityId)
       .populate('creator', 'username profile.firstName profile.lastName profile.avatar')
       .populate('members.user', 'username profile.firstName profile.lastName profile.avatar');
-
-    console.log('Community updated successfully:', communityId);
 
     res.json({
       success: true,
@@ -545,12 +444,10 @@ const updateCommunity = async (req, res) => {
 
 // @desc    Delete community
 // @route   DELETE /api/communities/:id
-// @access  Private
+// @access  Private (Creator only)
 const deleteCommunity = async (req, res) => {
   try {
     const communityId = req.params.id;
-
-    console.log('Delete community request:', { communityId, userId: req.user.id });
 
     if (!communityId || !communityId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ 
@@ -576,16 +473,17 @@ const deleteCommunity = async (req, res) => {
       });
     }
 
-    // Remove community from all members communities list
+    // Remove community from all members
     await User.updateMany(
       { communities: community._id },
       { $pull: { communities: community._id } }
     );
 
+    // Delete all posts in this community
+    await CommunityPost.deleteMany({ community: communityId });
+
     // Delete the community
     await Community.findByIdAndDelete(communityId);
-
-    console.log('Community deleted successfully:', communityId);
 
     res.json({
       success: true,
@@ -609,8 +507,6 @@ const getCommunityMembers = async (req, res) => {
     const communityId = req.params.id;
     const { page = 1, limit = 20 } = req.query;
 
-    console.log('Get community members:', { communityId, userId: req.user.id });
-
     if (!communityId || !communityId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ 
         success: false,
@@ -633,13 +529,10 @@ const getCommunityMembers = async (req, res) => {
 
     // Check if user is a member
     const isMember = community.members.some(
-      member => {
-        const memberUserId = member.user._id ? member.user._id.toString() : member.user.toString();
-        return memberUserId === req.user.id;
-      }
+      member => member.user._id.toString() === req.user.id
     );
 
-    if (!isMember) {
+    if (!isMember && community.isPrivate) {
       return res.status(403).json({
         success: false,
         message: 'You must be a member to view community members'
@@ -678,6 +571,123 @@ const getCommunityMembers = async (req, res) => {
   }
 };
 
+// @desc    Get posts for a community
+// @route   GET /api/communities/:id/posts
+// @access  Private
+const getCommunityPosts = async (req, res) => {
+  try {
+    const { id: communityId } = req.params;
+    const {
+      search,
+      type,
+      sortBy = 'createdAt',
+      page = 1,
+      limit = 20
+    } = req.query;
+
+    // Validate community ID
+    if (!communityId || !communityId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid community ID' 
+      });
+    }
+
+    // Check if community exists
+    const community = await Community.findById(communityId);
+    if (!community) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Community not found' 
+      });
+    }
+
+    // Check if user is a member
+    const isMember = community.members.some(
+      member => member.user.toString() === req.user.id
+    );
+
+    if (!isMember && community.isPrivate) {
+      return res.status(403).json({ 
+        success: false,
+        message: 'You must be a member to view posts' 
+      });
+    }
+
+    // Build query
+    const query = { community: communityId };
+    
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { content: { $regex: search, $options: 'i' } },
+        { tags: { $in: [new RegExp(search, 'i')] } }
+      ];
+    }
+    
+    if (type && type !== 'all') {
+      query.type = type;
+    }
+
+    // Sort options
+    let sortOptions = {};
+    switch (sortBy) {
+      case 'popular':
+        sortOptions = { 'likes.length': -1, createdAt: -1 };
+        break;
+      case 'replies':
+        sortOptions = { 'replies.length': -1, createdAt: -1 };
+        break;
+      default:
+        sortOptions = { isPinned: -1, createdAt: -1 };
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const posts = await CommunityPost.find(query)
+      .populate('author', 'username profile.firstName profile.lastName profile.avatar')
+      .populate('replies.author', 'username profile.firstName profile.lastName profile.avatar')
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await CommunityPost.countDocuments(query);
+
+    // Transform posts
+    const transformedPosts = posts.map(post => {
+      const postObj = post.toObject();
+      return {
+        ...postObj,
+        id: postObj._id.toString(),
+        likes: postObj.likes.map(like => like.user.toString()),
+        isLiked: postObj.likes.some(like => like.user.toString() === req.user.id),
+        replies: postObj.replies.map(reply => ({
+          ...reply,
+          id: reply._id ? reply._id.toString() : undefined
+        }))
+      };
+    });
+
+    res.json({
+      success: true,
+      posts: transformedPosts,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / parseInt(limit)),
+        totalPosts: total,
+        hasMore: skip + posts.length < total
+      }
+    });
+  } catch (error) {
+    console.error('Get community posts error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error fetching posts',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getCommunities,
   createCommunity,
@@ -686,5 +696,6 @@ module.exports = {
   getCommunityById,
   updateCommunity,
   deleteCommunity,
-  getCommunityMembers
+  getCommunityMembers,
+  getCommunityPosts
 };

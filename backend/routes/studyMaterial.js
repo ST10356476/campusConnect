@@ -1,4 +1,3 @@
-// routes/studyMaterial.js
 require("dotenv").config();
 const express = require("express");
 const upload = require("../src/middleware/upload");
@@ -197,7 +196,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // -------------------- Upload Study Material --------------------
-router.post("/:id/generate", protect, async (req, res) => {
+router.post("/upload", protect, upload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
@@ -256,7 +255,7 @@ router.post("/:id/generate", protect, async (req, res) => {
 });
 
 // -------------------- Generate Summary / Flashcards / Quiz --------------------
-router.post("/:id/generate", async (req, res) => {
+router.post("/:id/generate", protect, async (req, res) => {
   try {
     console.log("📩 Generation request received for:", req.params.id, "Type:", req.body.type);
     

@@ -22,8 +22,8 @@ interface StudyMaterial {
   flashcards?: Flashcard[];
   quiz?: Quiz[];
   createdAt?: string;
-  uploadedBy?: any; // Very flexible type to handle any data structure
-  savedBy?: string[];
+  uploadedBy?: any;
+  savedBy: string[]; // Changed from optional to required
 }
 
 interface StudyMaterialsProps {
@@ -101,7 +101,6 @@ export default function StudyMaterials({ user }: StudyMaterialsProps) {
     try {
       if (!user?._id || !material?.uploadedBy) return false;
       
-      // Handle different uploadedBy structures
       let uploadedById;
       if (typeof material.uploadedBy === 'string') {
         uploadedById = material.uploadedBy;
@@ -200,7 +199,6 @@ export default function StudyMaterials({ user }: StudyMaterialsProps) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      // Check file type
       const allowedTypes = Object.keys(supportedFileTypes);
       
       if (!allowedTypes.includes(selectedFile.type)) {
@@ -211,7 +209,6 @@ export default function StudyMaterials({ user }: StudyMaterialsProps) {
         return;
       }
       
-      // Check file size (100MB limit)
       if (selectedFile.size > 100 * 1024 * 1024) {
         setError("File size must be less than 100MB");
         return;
@@ -246,7 +243,8 @@ export default function StudyMaterials({ user }: StudyMaterialsProps) {
         return;
       }
       
-      const res = await axios.post("http://localhost:5000/api/study-materials", formData, {
+      // Updated endpoint to match backend
+      const res = await axios.post("http://localhost:5000/api/study-materials/upload", formData, {
         headers: { 
           "Content-Type": "multipart/form-data",
           "Authorization": `Bearer ${token}`
@@ -255,11 +253,9 @@ export default function StudyMaterials({ user }: StudyMaterialsProps) {
       
       setMaterials(prev => [res.data.material, ...prev]);
       setFile(null);
-      // Reset file input
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
       
-      // Switch to all materials tab to see the uploaded file
       setActiveTab("all");
       
     } catch (err: any) {
@@ -272,29 +268,29 @@ export default function StudyMaterials({ user }: StudyMaterialsProps) {
   };
 
   const handleGenerate = async (id: string, type: "summary" | "flashcards" | "quiz") => {
-  try {
-    setLoadingGenerate(id + type);
-    const token = localStorage.getItem("campus_connect_token");
+    try {
+      setLoadingGenerate(id + type);
+      const token = localStorage.getItem("campus_connect_token");
 
-    const res = await axios.post(
-      `http://localhost:5000/api/study-materials/${id}/generate`,
-      { type }, // <-- send type here
-      {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : "",
-        },
-      }
-    );
+      const res = await axios.post(
+        `http://localhost:5000/api/study-materials/${id}/generate`,
+        { type },
+        {
+          headers: {
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        }
+      );
 
-    setMaterials((prev) =>
-      prev.map((m) => (m._id === id ? { ...m, ...res.data.material } : m))
-    );
-  } catch (err: any) {
-    setError(`Generation failed: ${err.response?.data?.error || err.message}`);
-  } finally {
-    setLoadingGenerate(null);
-  }
-};
+      setMaterials((prev) =>
+        prev.map((m) => (m._id === id ? { ...m, ...res.data.material } : m))
+      );
+    } catch (err: any) {
+      setError(`Generation failed: ${err.response?.data?.error || err.message}`);
+    } finally {
+      setLoadingGenerate(null);
+    }
+  };
 
   const handleDeleteMaterial = async (id: string) => {
     if (!id) {
@@ -319,7 +315,6 @@ export default function StudyMaterials({ user }: StudyMaterialsProps) {
       setError(errorMessage);
     }
   };
-
 
   const toggleFlashcardAnswer = (materialId: string) => {
     setShowAnswer(prev => ({
@@ -370,7 +365,7 @@ export default function StudyMaterials({ user }: StudyMaterialsProps) {
 
   const getTabCounts = () => {
     const allCount = materials.length;
-    const savedCount = materials.filter(m => user?._id && m.savedBy?.includes(user._id)).length;
+    const savedCount = materials.filter(m => user?._id && m.savedBy.includes(user._id)).length;
     return { allCount, savedCount };
   };
 
@@ -423,6 +418,7 @@ export default function StudyMaterials({ user }: StudyMaterialsProps) {
             >
               All Materials ({allCount})
             </button>
+
             <button
               className={`px-6 py-3 mx-1 rounded-xl font-semibold transition-all duration-300 ${
                 activeTab === "upload" 
@@ -484,7 +480,7 @@ export default function StudyMaterials({ user }: StudyMaterialsProps) {
                   Select File (Max 100MB)
                 </label>
                 <div className="mb-2 text-xs text-gray-500">
-                  Supported formats: Word (DOC/DOCX), Text (TXT), Rich Text (RTF), Markdown (MD), OpenDocument (ODT), [PDF coming soon]
+                  Supported formats: Word (DOC/DOCX), Text (TXT), Rich Text (RTF), Markdown (MD), OpenDocument (ODT), PDF
                 </div>
                 <input 
                   type="file" 
@@ -571,7 +567,6 @@ export default function StudyMaterials({ user }: StudyMaterialsProps) {
               </div>
             ) : (
               getDisplayMaterials().map((material, index) => {
-                // Safe rendering with null checks
                 const materialId = material._id || `material-${index}`;
                 const materialName = material.originalName || 'Unknown File';
                 const materialUrl = material.url || '#';

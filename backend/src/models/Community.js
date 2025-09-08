@@ -60,7 +60,7 @@ const CommunitySchema = new mongoose.Schema({
     user: {
       type: mongoose.Schema.Types.ObjectId,  // Fixed: Changed from Object to ObjectId
       ref: 'User',
-      required: true
+      default: []
     },
     joinedAt: {
       type: Date,
@@ -110,8 +110,8 @@ const CommunitySchema = new mongoose.Schema({
 });
 
 // Virtual for member count
-CommunitySchema.virtual('memberCount').get(function() {
-  return this.members.length;
+CommunitySchema.virtual('memberCount').get(function () {
+  return Array.isArray(this.members) ? this.members.length : 0;
 });
 
 // Indexes for better query performance

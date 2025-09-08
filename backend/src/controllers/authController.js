@@ -155,7 +155,14 @@ const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
       .populate('communities', 'name avatar')
-      .populate('achievements', 'title description');
+      .populate('achievements', 'title description')
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({
+        message: 'User not found'
+      });
+    }
 
     res.json({
       success: true,

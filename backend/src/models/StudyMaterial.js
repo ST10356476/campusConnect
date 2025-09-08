@@ -1,4 +1,3 @@
-// backend/src/models/StudyMaterial.js
 const mongoose = require("mongoose");
 
 const studyMaterialSchema = new mongoose.Schema({

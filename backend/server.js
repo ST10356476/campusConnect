@@ -28,7 +28,7 @@ connectDB();
 // Load models
 require('./src/models/User');
 require('./src/models/Community');
-require('./src/models/CommunityPost'); // Make sure this file exists
+require('./src/models/CommunityPost');
 require('./src/models/Achievement');
 
 // Middleware

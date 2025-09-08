@@ -11,6 +11,7 @@ interface ImportMeta {
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export interface User {
+  _id: string;
   id: string;
   username: string;
   email: string;
@@ -25,8 +26,10 @@ export interface User {
     year: number;
     skills?: string[];
     interests?: string[];
+
     location?: string;
     joinedDate?: string;
+
   };
   points: number; // Keep this for backward compatibility - will always be 0
   communities: string[];
@@ -60,16 +63,17 @@ export interface AchievementStats {
 }
 
 export interface Community {
+  _id?: string;
   id: string;
   name: string;
   description: string;
-  avatar: string;
+  avatar?: string;
   category: string;
   isPrivate: boolean;
   maxMembers: number;
-  creator: string;
+  creator: string | User;
   members: Array<{
-    user: string;
+    user: string | User;
     joinedAt: string;
     role: string;
   }>;
@@ -78,6 +82,49 @@ export interface Community {
   university: string;
   course?: string;
   isActive: boolean;
+  isMember?: boolean;
+}
+
+export interface CommunityPost {
+  _id?: string;
+  id: string;
+  title: string;
+  content: string;
+  author: {
+    _id?: string;
+    id?: string;
+    username: string;
+    profile: {
+      firstName: string;
+      lastName: string;
+      avatar: string;
+    };
+  };
+  type: 'discussion' | 'question' | 'announcement' | 'resource';
+  tags: string[];
+  likes: string[] | Array<{ user: string; createdAt: string }>;
+  replies: Array<{
+    _id?: string;
+    id?: string;
+    author: {
+      _id?: string;
+      id?: string;
+      username: string;
+      profile: {
+        firstName: string;
+        lastName: string;
+        avatar: string;
+      };
+    };
+    content: string;
+    likes: string[];
+    createdAt: string;
+  }>;
+  isPinned: boolean;
+  isLocked: boolean;
+  viewCount: number;
+  createdAt: string;
+  community: string | Community;
 }
 
 export interface StudyMaterial {
@@ -139,7 +186,7 @@ class ApiService {
     return this.token;
   }
 
-  async request(endpoint: string, options: RequestInit = {}) {
+  private async request(endpoint: string, options: RequestInit = {}) {
     const url = `${this.baseURL}${endpoint}`;
     const token = this.getToken();
 
@@ -152,17 +199,22 @@ class ApiService {
       ...options,
     };
 
-    const response = await fetch(url, config);
-    const data = await response.json();
+    try {
+      const response = await fetch(url, config);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+      }
 
-    if (!response.ok) {
-      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+      return data;
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
     }
-
-    return data;
   }
 
-  // Auth
+  // Auth methods
   async register(userData: {
     username: string;
     email: string;
@@ -177,7 +229,11 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(userData),
     });
-    if (response.token) this.setToken(response.token);
+    
+    if (response.token) {
+      this.setToken(response.token);
+    }
+    
     return response;
   }
 
@@ -186,7 +242,11 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
-    if (response.token) this.setToken(response.token);
+    
+    if (response.token) {
+      this.setToken(response.token);
+    }
+    
     return response;
   }
 
@@ -208,6 +268,7 @@ class ApiService {
     });
   }
 
+
   // Achievements
   async getAchievements(): Promise<{ 
     success: boolean; 
@@ -223,9 +284,44 @@ class ApiService {
   async getCommunities(params: any = {}) {
     const queryString = new URLSearchParams(params).toString();
     return this.request(`/communities?${queryString}`);
+  // Community methods
+  async getCommunities(params?: {
+    category?: string;
+    university?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+  }): Promise<{
+    success: boolean;
+    communities: Community[];
+    pagination: any;
+  }> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+    
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `/communities?${queryString}` : '/communities';
+    
+    return this.request(endpoint);
   }
 
-  async createCommunity(communityData: any) {
+  async createCommunity(communityData: {
+    name: string;
+    description: string;
+    category: string;
+    isPrivate?: boolean;
+    maxMembers?: number;
+    tags: string[];
+    university: string;
+    course?: string;
+  }): Promise<{ success: boolean; community: Community; message: string }> {
     return this.request('/communities', {
       method: 'POST',
       body: JSON.stringify(communityData),
@@ -272,62 +368,161 @@ class ApiService {
 
     const token = this.getToken();
     const response = await fetch(`${this.baseURL}/communities/${communityId}/avatar`, {
-      method: 'POST',
-      headers: {
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
-      body: formData,
-    });
 
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || `HTTP error! status: ${response.status}`);
-    }
-    return data;
+  async getCommunityById(communityId: string): Promise<{
+    success: boolean;
+    community: Community;
+  }> {
+    return this.request(`/communities/${communityId}`);
+  }
+
+  async joinCommunity(communityId: string): Promise<{
+    success: boolean;
+    community: Community;
+    message: string;
+  }> {
+
+      method: 'POST',
+    });
   }
 
   async deleteCommunityAvatar(communityId: string) {
     return this.request(`/communities/${communityId}/avatar`, {
       method: 'DELETE',
-    });
-  }
-
-  async joinCommunity(communityId: string) {
-    return this.request(`/communities/${communityId}/join`, {
-      method: 'POST',
-    });
-  }
-
-  async leaveCommunity(communityId: string) {
+  async leaveCommunity(communityId: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
     return this.request(`/communities/${communityId}/leave`, {
       method: 'POST',
     });
   }
 
-  async getCommunityById(communityId: string) {
-    return this.request(`/communities/${communityId}`);
+  async updateCommunity(communityId: string, updateData: {
+    name?: string;
+    description?: string;
+    category?: string;
+    isPrivate?: boolean;
+    maxMembers?: number;
+    tags?: string[];
+    course?: string;
+  }): Promise<{
+    success: boolean;
+    community: Community;
+    message: string;
+  }> {
+    return this.request(`/communities/${communityId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData),
+    });
   }
 
-  async getCommunityPosts(communityId: string, params: any = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    return this.request(`/communities/${communityId}/posts?${queryString}`);
+  async deleteCommunity(communityId: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    return this.request(`/communities/${communityId}`, {
+      method: 'DELETE',
+    });
   }
 
-  async createCommunityPost(postData: any) {
+  async getCommunityMembers(communityId: string, params?: {
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    success: boolean;
+    members: any[];
+    pagination: any;
+  }> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+    
+    const queryString = queryParams.toString();
+    const endpoint = queryString 
+      ? `/communities/${communityId}/members?${queryString}` 
+      : `/communities/${communityId}/members`;
+    
+    return this.request(endpoint);
+  }
+
+  // Community Post methods
+  async getCommunityPosts(communityId: string, params?: {
+  search?: string;
+  type?: string;
+  sortBy?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{
+  success: boolean;
+  posts: CommunityPost[];
+  pagination: any;
+}> {
+  const queryParams = new URLSearchParams();
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, String(value));
+      }
+    });
+  }
+  
+  const queryString = queryParams.toString();
+  const endpoint = queryString 
+    ? `/communities/${communityId}/posts?${queryString}` 
+    : `/communities/${communityId}/posts`;
+  
+  return this.request(endpoint);
+}
+
+  async createCommunityPost(postData: {
+    title: string;
+    content: string;
+    type: 'discussion' | 'question' | 'announcement' | 'resource';
+    tags: string[];
+    communityId: string;
+  }): Promise<{
+    success: boolean;
+    post: CommunityPost;
+    message: string;
+  }> {
     return this.request('/posts', {
       method: 'POST',
       body: JSON.stringify(postData),
     });
   }
 
-  async replyToPost(postId: string, replyData: any) {
+  async getPost(postId: string): Promise<{
+    success: boolean;
+    post: CommunityPost;
+  }> {
+    return this.request(`/posts/${postId}`);
+  }
+
+  async replyToPost(postId: string, replyData: {
+    content: string;
+  }): Promise<{
+    success: boolean;
+    post: CommunityPost;
+    message: string;
+  }> {
     return this.request(`/posts/${postId}/reply`, {
       method: 'POST',
       body: JSON.stringify(replyData),
     });
   }
 
-  async likePost(postId: string) {
+  async likePost(postId: string): Promise<{
+    success: boolean;
+    likeCount: number;
+    isLiked: boolean;
+    message: string;
+  }> {
     return this.request(`/posts/${postId}/like`, {
       method: 'POST',
     });
@@ -342,25 +537,31 @@ class ApiService {
 
   async deleteCommunity(communityId: string) {
     return this.request(`/communities/${communityId}`, {
+  async deletePost(postId: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    return this.request(`/posts/${postId}`, {
       method: 'DELETE',
     });
   }
 
-  // Materials
-  async getMaterials(params: any = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    return this.request(`/materials?${queryString}`);
-  }
-
-  async uploadMaterial(materialData: any) {
-    return this.request('/materials', {
+  async pinPost(postId: string): Promise<{
+    success: boolean;
+    isPinned: boolean;
+    message: string;
+  }> {
+    return this.request(`/posts/${postId}/pin`, {
       method: 'POST',
-      body: JSON.stringify(materialData),
     });
   }
 
-  async likeMaterial(materialId: string) {
-    return this.request(`/materials/${materialId}/like`, {
+  async lockPost(postId: string): Promise<{
+    success: boolean;
+    isLocked: boolean;
+    message: string;
+  }> {
+    return this.request(`/posts/${postId}/lock`, {
       method: 'POST',
     });
   }
@@ -369,8 +570,34 @@ class ApiService {
     const formData = new FormData();
     formData.append('file', file);
 
+  // Study Materials methods
+  async getStudyMaterials(params?: any): Promise<{
+    success: boolean;
+    materials: StudyMaterial[];
+    pagination: any;
+  }> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+    
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `/materials?${queryString}` : '/materials';
+    
+    return this.request(endpoint);
+  }
+
+  async uploadStudyMaterial(formData: FormData): Promise<{
+    success: boolean;
+    material: StudyMaterial;
+    message: string;
+  }> {
     const token = this.getToken();
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
+    const response = await fetch(`${this.baseURL}/materials`, {
       method: 'POST',
       headers: {
         ...(token && { Authorization: `Bearer ${token}` }),
@@ -378,13 +605,155 @@ class ApiService {
       body: formData,
     });
 
+    const data = await response.json();
+    
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Upload failed');
+      throw new Error(data.message || `HTTP error! status: ${response.status}`);
     }
 
-    return response.json();
+    return data;
   }
+
+  async downloadMaterial(materialId: string): Promise<{
+    success: boolean;
+    url: string;
+  }> {
+    return this.request(`/materials/${materialId}/download`);
+  }
+
+  async likeMaterial(materialId: string): Promise<{
+    success: boolean;
+    likeCount: number;
+    isLiked: boolean;
+  }> {
+    return this.request(`/materials/${materialId}/like`, {
+      method: 'POST',
+    });
+  }
+
+  async deleteMaterial(materialId: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    return this.request(`/materials/${materialId}`, {
+      method: 'DELETE',
+    });
+  }
+
+      async getMeetups(params?: {
+  type?: string;
+  status?: string;
+  community?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+}): Promise<{
+  success: boolean;
+  meetups: any[];
+  pagination: any;
+}> {
+  const queryParams = new URLSearchParams();
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, String(value));
+      }
+    });
+  }
+  
+  const queryString = queryParams.toString();
+  const endpoint = queryString ? `/meetups?${queryString}` : '/meetups';
+  
+  return this.request(endpoint);
+}
+
+async createMeetup(meetupData: {
+  title: string;
+  description: string;
+  type: string;
+  location: {
+    type: string;
+    venue?: string;
+    address?: string;
+    meetingLink?: string;
+    coordinates?: {
+      latitude: number;
+      longitude: number;
+    };
+  };
+  dateTime: {
+    start: Date;
+    end: Date;
+  };
+  maxAttendees?: number;
+  community?: string;
+  tags?: string[];
+  requirements?: string;
+  isPublic?: boolean;
+  recurring?: {
+    isRecurring: boolean;
+    pattern?: string;
+    endDate?: Date;
+  };
+}): Promise<{
+  success: boolean;
+  meetup: any;
+  message: string;
+}> {
+  return this.request('/meetups', {
+    method: 'POST',
+    body: JSON.stringify(meetupData),
+  });
+}
+
+async joinMeetup(meetupId: string): Promise<{
+  success: boolean;
+  meetup: any;
+  message: string;
+}> {
+  return this.request(`/meetups/${meetupId}/join`, {
+    method: 'POST',
+  });
+}
+
+async leaveMeetup(meetupId: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  return this.request(`/meetups/${meetupId}/leave`, {
+    method: 'POST',
+  });
+}
+
+async getMeetupById(meetupId: string): Promise<{
+  success: boolean;
+  meetup: any;
+}> {
+  return this.request(`/meetups/${meetupId}`);
+}
+
+async updateMeetup(meetupId: string, updateData: any): Promise<{
+  success: boolean;
+  meetup: any;
+  message: string;
+}> {
+  return this.request(`/meetups/${meetupId}`, {
+    method: 'PUT',
+    body: JSON.stringify(updateData),
+  });
+}
+
+async deleteMeetup(meetupId: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  return this.request(`/meetups/${meetupId}`, {
+    method: 'DELETE',
+  });
+}
+
+  
 }
 
 export const apiService = new ApiService();

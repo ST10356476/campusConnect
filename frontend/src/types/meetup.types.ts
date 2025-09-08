@@ -1,4 +1,3 @@
-// frontend/src/types/meetup.types.ts
 export interface Meetup {
   _id: string;
   title: string;

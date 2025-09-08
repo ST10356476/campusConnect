@@ -47,9 +47,11 @@ const UserSchema = new mongoose.Schema({
       type: String,
       maxlength: [500, 'Bio cannot exceed 500 characters']
     },
+
     // Added for the Profile screen
     location: { type: String, trim: true },
     joinedDate: { type: String }, // ISO string as used by the UI
+
     university: {
       type: String,
       required: [true, 'Please provide university name']
@@ -79,6 +81,7 @@ const UserSchema = new mongoose.Schema({
   }],
   // Updated achievement structure to match the achievement controller
   achievements: [{
+
     achievementId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Achievement',
@@ -96,7 +99,17 @@ const UserSchema = new mongoose.Schema({
       default: 0
     }
   }],
-  // Keep points field for backward compatibility (always 0)
+
+  achievement: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Achievement'
+  },
+  earnedAt: {
+    type: Date,
+    default: Date.now
+  }
+}],
+
   points: {
     type: Number,
     default: 0
@@ -126,11 +139,10 @@ const UserSchema = new mongoose.Schema({
 // Hash password before saving
 UserSchema.pre('save', async function(next) {
   if (!this.isModified('password')) {
-    return next();
+    next();
   }
   const salt = await bcrypt.genSalt(12);
   this.password = await bcrypt.hash(this.password, salt);
-  next();
 });
 
 // Compare password
@@ -150,3 +162,5 @@ UserSchema.virtual('badges').get(function() {
 
 // Prevent model overwrite error
 module.exports = mongoose.models.User || mongoose.model('User', UserSchema);
+
+

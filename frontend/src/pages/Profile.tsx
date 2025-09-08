@@ -23,6 +23,7 @@ interface ProfileProps {
 export function Profile({ user, setUser }: ProfileProps) {
   const [isEditing, setIsEditing] = useState(false);
 
+
   const uProfile: any = (user as any)?.profile ?? {};
   const displayName =
     [uProfile.firstName, uProfile.lastName].filter(Boolean).join(' ') ||
@@ -113,6 +114,10 @@ export function Profile({ user, setUser }: ProfileProps) {
       joinedDate: editForm.joinedDate || undefined
     };
 
+
+
+
+
     try {
       const res = await apiService.updateProfile(payload);
       if (res.success && res.user) {
@@ -144,6 +149,7 @@ export function Profile({ user, setUser }: ProfileProps) {
       </div>
     );
   }
+
 
   const stats = [
     { label: 'Questions Asked', value: 12, icon: BookOpen },

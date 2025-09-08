@@ -3,8 +3,11 @@ const generateToken = require('../utils/generateToken');
 const { validationResult } = require('express-validator');
 
 
+
+
 const register = async (req, res) => {
   try {
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -25,6 +28,10 @@ const register = async (req, res) => {
     } = req.body;
 
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+
+
+
+
     if (existingUser) {
       return res.status(400).json({
         message:
@@ -33,6 +40,7 @@ const register = async (req, res) => {
             : 'Username already taken'
       });
     }
+
 
     const user = await User.create({
       username,
@@ -46,6 +54,7 @@ const register = async (req, res) => {
         year
       }
     });
+
 
     const token = generateToken(user._id);
 
@@ -79,6 +88,7 @@ const register = async (req, res) => {
 // @access  Public
 const login = async (req, res) => {
   try {
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -89,18 +99,28 @@ const login = async (req, res) => {
 
     const { email, password } = req.body;
 
+
     const user = await User.findOne({ email }).select('+password');
+
     if (!user) {
       return res.status(401).json({ message: 'Invalid email or password' });
+
+
     }
 
+
     const isMatch = await user.matchPassword(password);
+
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid email or password' });
+
+
     }
+
 
     user.lastActive = new Date();
     await user.save();
+
 
     const token = generateToken(user._id);
 

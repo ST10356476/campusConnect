@@ -1,57 +1,7 @@
 const Community = require('../models/Community');
 const User = require('../models/User');
+const CommunityPost = require('../models/CommunityPost');
 const { validationResult } = require('express-validator');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs').promises;
-
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: async (req, file, cb) => {
-    const uploadPath = path.join(__dirname, '../uploads/communities');
-    try {
-      await fs.mkdir(uploadPath, { recursive: true });
-    } catch (error) {
-      console.error('Error creating upload directory:', error);
-    }
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, `community-${uniqueSuffix}${ext}`);
-  }
-});
-
-const fileFilter = (req, file, cb) => {
-  // Only allow image files
-  if (file.mimetype.startsWith('image/')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only image files are allowed'), false);
-  }
-};
-
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: 50 * 1024 * 1024 // 50MB limit
-  }
-});
-
-// Helper function to delete old avatar file
-const deleteOldAvatar = async (avatarPath) => {
-  if (avatarPath) {
-    try {
-      const fullPath = path.join(__dirname, '../uploads/communities', path.basename(avatarPath));
-      await fs.unlink(fullPath);
-      console.log('Old avatar deleted:', fullPath);
-    } catch (error) {
-      console.error('Error deleting old avatar:', error);
-    }
-  }
-};
 
 // @desc    Get all communities
 // @route   GET /api/communities
@@ -67,8 +17,7 @@ const getCommunities = async (req, res) => {
       sortBy = 'createdAt'
     } = req.query;
 
-    console.log('Get communities request:', { category, university, search, page, limit, sortBy });
-
+    // Build query
     const query = { isActive: true };
     
     if (category && category !== 'all') {
@@ -96,15 +45,14 @@ const getCommunities = async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit));
 
-    console.log(`Found ${communities.length} communities`);
-
+    // Transform communities
     const transformedCommunities = communities.map(community => ({
       ...community.toObject(),
       id: community._id.toString(),
       memberCount: community.members.length,
-      isCreator: community.creator._id.toString() === req.user.id,
-      // Provide backward compatibility for avatar field
-      avatar: community.avatar?.url || null
+      isMember: community.members.some(member => 
+        member.user._id.toString() === req.user.id
+      )
     }));
 
     const total = await Community.countDocuments(query);
@@ -154,31 +102,19 @@ const createCommunity = async (req, res) => {
       course
     } = req.body;
 
-    console.log('Create community request:', { 
-      name, 
-      description: description.substring(0, 50) + '...', 
-      category, 
-      isPrivate, 
-      maxMembers, 
-      tags, 
-      university, 
-      course,
-      userId: req.user.id 
-    });
-
+    // Check if community with same name exists
     const existingCommunity = await Community.findOne({
-      name: { $regex: new RegExp(`^${name}$`, 'i') },
-      creator: req.user.id
+      name: { $regex: new RegExp('^' + name + '$', 'i') }
     });
 
     if (existingCommunity) {
       return res.status(400).json({
         success: false,
-        message: 'You already have a community with this name'
+        message: 'A community with this name already exists'
       });
     }
 
-    const communityData = {
+    const community = await Community.create({
       name,
       description,
       category,
@@ -195,24 +131,9 @@ const createCommunity = async (req, res) => {
       university,
       course,
       isActive: true
-    };
+    });
 
-    // Handle avatar upload if present
-    if (req.file) {
-      communityData.avatar = {
-        filename: req.file.filename,
-        originalName: req.file.originalname,
-        url: `/uploads/communities/${req.file.filename}`,
-        fileType: req.file.mimetype,
-        fileSize: req.file.size,
-        uploadedAt: new Date()
-      };
-    }
-
-    const community = await Community.create(communityData);
-
-    console.log('Community created successfully:', community._id);
-
+    // Add community to user's communities
     await User.findByIdAndUpdate(req.user.id, {
       $push: { communities: community._id }
     });
@@ -227,21 +148,11 @@ const createCommunity = async (req, res) => {
       community: {
         ...populatedCommunity.toObject(),
         id: populatedCommunity._id.toString(),
-        memberCount: populatedCommunity.members.length,
-        isCreator: true,
-        avatar: populatedCommunity.avatar?.url || null
+        memberCount: populatedCommunity.members.length
       }
     });
   } catch (error) {
     console.error('Create community error:', error);
-    // Clean up uploaded file if community creation fails
-    if (req.file) {
-      try {
-        await fs.unlink(req.file.path);
-      } catch (unlinkError) {
-        console.error('Error cleaning up uploaded file:', unlinkError);
-      }
-    }
     res.status(500).json({
       success: false,
       message: 'Server error creating community',
@@ -255,101 +166,7 @@ const createCommunity = async (req, res) => {
 // @access  Private
 const joinCommunity = async (req, res) => {
   try {
-    console.log('Join community params:', req.params);
-    console.log('Join community user:', req.user?.id);
-
-    const communityId = req.params.id || req.params.communityId || req.body.communityId;
-
-    if (!communityId) {
-      console.error('No community ID provided');
-      return res.status(400).json({ 
-        success: false,
-        message: 'Community ID is required' 
-      });
-    }
-
-    if (!communityId.match(/^[0-9a-fA-F]{24}$/)) {
-      console.error('Invalid ObjectId format:', communityId);
-      return res.status(400).json({ 
-        success: false,
-        message: 'Invalid community ID format' 
-      });
-    }
-
-    const community = await Community.findById(communityId);
-
-    if (!community) {
-      return res.status(404).json({ 
-        success: false,
-        message: 'Community not found' 
-      });
-    }
-
-    const isMember = community.members.some(
-      member => member.user.toString() === req.user.id
-    );
-
-    if (isMember) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'You are already a member of this community' 
-      });
-    }
-
-    if (community.members.length >= community.maxMembers) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Community is full' 
-      });
-    }
-
-    community.members.push({
-      user: req.user.id,
-      joinedAt: new Date(),
-      role: 'member'
-    });
-
-    await community.save();
-
-    console.log('User joined community successfully:', { userId: req.user.id, communityId });
-
-    await User.findByIdAndUpdate(req.user.id, {
-      $push: { communities: community._id }
-    });
-
-    const updatedCommunity = await Community.findById(community._id)
-      .populate('creator', 'username profile.firstName profile.lastName profile.avatar')
-      .populate('members.user', 'username profile.firstName profile.lastName profile.avatar');
-
-    res.json({
-      success: true,
-      message: 'Successfully joined community',
-      community: {
-        ...updatedCommunity.toObject(),
-        id: updatedCommunity._id.toString(),
-        memberCount: updatedCommunity.members.length,
-        isCreator: updatedCommunity.creator._id.toString() === req.user.id,
-        avatar: updatedCommunity.avatar?.url || null
-      }
-    });
-  } catch (error) {
-    console.error('Join community error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error joining community',
-      error: error.message
-    });
-  }
-};
-
-// @desc    Leave community
-// @route   POST /api/communities/:id/leave
-// @access  Private
-const leaveCommunity = async (req, res) => {
-  try {
-    console.log('Leave community request:', { params: req.params, userId: req.user.id });
-    
-    const communityId = req.params.id || req.params.communityId || req.body.communityId;
+    const communityId = req.params.id;
 
     if (!communityId || !communityId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ 
@@ -367,6 +184,87 @@ const leaveCommunity = async (req, res) => {
       });
     }
 
+    // Check if user is already a member
+    const isMember = community.members.some(
+      member => member.user.toString() === req.user.id
+    );
+
+    if (isMember) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'You are already a member of this community' 
+      });
+    }
+
+    // Check if community is full
+    if (community.members.length >= community.maxMembers) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Community is full' 
+      });
+    }
+
+    // Add user to community
+    community.members.push({
+      user: req.user.id,
+      joinedAt: new Date(),
+      role: 'member'
+    });
+
+    await community.save();
+
+    // Add community to user's communities
+    await User.findByIdAndUpdate(req.user.id, {
+      $push: { communities: community._id }
+    });
+
+    const updatedCommunity = await Community.findById(community._id)
+      .populate('creator', 'username profile.firstName profile.lastName profile.avatar')
+      .populate('members.user', 'username profile.firstName profile.lastName profile.avatar');
+
+    res.json({
+      success: true,
+      message: 'Successfully joined community',
+      community: {
+        ...updatedCommunity.toObject(),
+        id: updatedCommunity._id.toString(),
+        memberCount: updatedCommunity.members.length
+      }
+    });
+  } catch (error) {
+    console.error('Join community error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error joining community',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Leave community
+// @route   POST /api/communities/:id/leave
+// @access  Private
+const leaveCommunity = async (req, res) => {
+  try {
+    const communityId = req.params.id;
+
+    if (!communityId || !communityId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid community ID' 
+      });
+    }
+
+    const community = await Community.findById(communityId);
+
+    if (!community) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Community not found' 
+      });
+    }
+
+    // Check if user is the creator
     if (community.creator.toString() === req.user.id) {
       return res.status(400).json({
         success: false,
@@ -374,6 +272,7 @@ const leaveCommunity = async (req, res) => {
       });
     }
 
+    // Check if user is actually a member
     const isMember = community.members.some(
       member => member.user.toString() === req.user.id
     );
@@ -385,18 +284,19 @@ const leaveCommunity = async (req, res) => {
       });
     }
 
+    // Remove user from community members
     community.members = community.members.filter(
       member => member.user.toString() !== req.user.id
     );
 
+    // Remove from admins if present
     community.admins = community.admins.filter(
       admin => admin.toString() !== req.user.id
     );
 
     await community.save();
 
-    console.log('User left community successfully:', { userId: req.user.id, communityId });
-
+    // Remove community from user's communities
     await User.findByIdAndUpdate(req.user.id, {
       $pull: { communities: community._id }
     });
@@ -420,9 +320,7 @@ const leaveCommunity = async (req, res) => {
 // @access  Private
 const getCommunityById = async (req, res) => {
   try {
-    const communityId = req.params.id || req.params.communityId;
-
-    console.log('Get community by ID:', { communityId, userId: req.user.id });
+    const communityId = req.params.id;
 
     if (!communityId || !communityId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ 
@@ -433,7 +331,8 @@ const getCommunityById = async (req, res) => {
 
     const community = await Community.findById(communityId)
       .populate('creator', 'username profile.firstName profile.lastName profile.avatar')
-      .populate('members.user', 'username profile.firstName profile.lastName profile.avatar');
+      .populate('members.user', 'username profile.firstName profile.lastName profile.avatar')
+      .populate('posts');
 
     if (!community) {
       return res.status(404).json({ 
@@ -442,20 +341,10 @@ const getCommunityById = async (req, res) => {
       });
     }
 
+    // Check if user is a member
     const isMember = community.members.some(
-      member => {
-        const memberUserId = member.user._id ? member.user._id.toString() : member.user.toString();
-        return memberUserId === req.user.id;
-      }
+      member => member.user._id.toString() === req.user.id
     );
-
-    const isCreator = community.creator._id.toString() === req.user.id;
-
-    console.log('Community membership check:', {
-      userId: req.user.id,
-      isMember,
-      isCreator
-    });
 
     res.json({
       success: true,
@@ -463,9 +352,7 @@ const getCommunityById = async (req, res) => {
         ...community.toObject(),
         id: community._id.toString(),
         memberCount: community.members.length,
-        isMember,
-        isCreator,
-        avatar: community.avatar?.url || null
+        isMember
       }
     });
   } catch (error) {
@@ -480,7 +367,7 @@ const getCommunityById = async (req, res) => {
 
 // @desc    Update community
 // @route   PUT /api/communities/:id
-// @access  Private
+// @access  Private (Creator/Admin only)
 const updateCommunity = async (req, res) => {
   try {
     const communityId = req.params.id;
@@ -494,8 +381,6 @@ const updateCommunity = async (req, res) => {
       course
     } = req.body;
 
-    console.log('Update community request:', { communityId, userId: req.user.id });
-
     if (!communityId || !communityId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ 
         success: false,
@@ -512,6 +397,7 @@ const updateCommunity = async (req, res) => {
       });
     }
 
+    // Check if user is creator or admin
     const isCreator = community.creator.toString() === req.user.id;
     const isAdmin = community.admins.some(admin => admin.toString() === req.user.id);
 
@@ -522,9 +408,6 @@ const updateCommunity = async (req, res) => {
       });
     }
 
-    // Store old avatar for potential cleanup
-    const oldAvatarPath = community.avatar?.url;
-
     // Update fields if provided
     if (name) community.name = name;
     if (description) community.description = description;
@@ -532,24 +415,7 @@ const updateCommunity = async (req, res) => {
     if (typeof isPrivate === 'boolean') community.isPrivate = isPrivate;
     if (maxMembers) community.maxMembers = maxMembers;
     if (tags) community.tags = tags;
-    if (course) community.course = course;
-
-    // Handle avatar upload if present
-    if (req.file) {
-      // Delete old avatar if it exists
-      if (oldAvatarPath) {
-        await deleteOldAvatar(oldAvatarPath);
-      }
-
-      community.avatar = {
-        filename: req.file.filename,
-        originalName: req.file.originalname,
-        url: `/uploads/communities/${req.file.filename}`,
-        fileType: req.file.mimetype,
-        fileSize: req.file.size,
-        uploadedAt: new Date()
-      };
-    }
+    if (course !== undefined) community.course = course;
 
     await community.save();
 
@@ -557,29 +423,17 @@ const updateCommunity = async (req, res) => {
       .populate('creator', 'username profile.firstName profile.lastName profile.avatar')
       .populate('members.user', 'username profile.firstName profile.lastName profile.avatar');
 
-    console.log('Community updated successfully:', communityId);
-
     res.json({
       success: true,
       message: 'Community updated successfully',
       community: {
         ...updatedCommunity.toObject(),
         id: updatedCommunity._id.toString(),
-        memberCount: updatedCommunity.members.length,
-        isCreator: updatedCommunity.creator._id.toString() === req.user.id,
-        avatar: updatedCommunity.avatar?.url || null
+        memberCount: updatedCommunity.members.length
       }
     });
   } catch (error) {
     console.error('Update community error:', error);
-    // Clean up uploaded file if update fails
-    if (req.file) {
-      try {
-        await fs.unlink(req.file.path);
-      } catch (unlinkError) {
-        console.error('Error cleaning up uploaded file:', unlinkError);
-      }
-    }
     res.status(500).json({
       success: false,
       message: 'Server error updating community',
@@ -590,12 +444,10 @@ const updateCommunity = async (req, res) => {
 
 // @desc    Delete community
 // @route   DELETE /api/communities/:id
-// @access  Private
+// @access  Private (Creator only)
 const deleteCommunity = async (req, res) => {
   try {
     const communityId = req.params.id;
-
-    console.log('Delete community request:', { communityId, userId: req.user.id });
 
     if (!communityId || !communityId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ 
@@ -613,30 +465,25 @@ const deleteCommunity = async (req, res) => {
       });
     }
 
-    const isCreator = community.creator.toString() === req.user.id;
-    
-    if (!isCreator) {
+    // Only creator can delete community
+    if (community.creator.toString() !== req.user.id) {
       return res.status(403).json({
         success: false,
         message: 'Only the community creator can delete the community'
       });
     }
 
-    // Delete avatar if it exists
-    if (community.avatar?.url) {
-      await deleteOldAvatar(community.avatar.url);
-    }
-
-    // Remove community from all members' communities list
+    // Remove community from all members
     await User.updateMany(
       { communities: community._id },
       { $pull: { communities: community._id } }
     );
 
+    // Delete all posts in this community
+    await CommunityPost.deleteMany({ community: communityId });
+
     // Delete the community
     await Community.findByIdAndDelete(communityId);
-
-    console.log('Community deleted successfully:', communityId);
 
     res.json({
       success: true,
@@ -660,8 +507,6 @@ const getCommunityMembers = async (req, res) => {
     const communityId = req.params.id;
     const { page = 1, limit = 20 } = req.query;
 
-    console.log('Get community members:', { communityId, userId: req.user.id });
-
     if (!communityId || !communityId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ 
         success: false,
@@ -682,14 +527,12 @@ const getCommunityMembers = async (req, res) => {
       });
     }
 
+    // Check if user is a member
     const isMember = community.members.some(
-      member => {
-        const memberUserId = member.user._id ? member.user._id.toString() : member.user.toString();
-        return memberUserId === req.user.id;
-      }
+      member => member.user._id.toString() === req.user.id
     );
 
-    if (!isMember) {
+    if (!isMember && community.isPrivate) {
       return res.status(403).json({
         success: false,
         message: 'You must be a member to view community members'
@@ -728,13 +571,21 @@ const getCommunityMembers = async (req, res) => {
   }
 };
 
-// @desc    Upload community avatar
-// @route   POST /api/communities/:id/avatar
+// @desc    Get posts for a community
+// @route   GET /api/communities/:id/posts
 // @access  Private
-const uploadCommunityAvatar = async (req, res) => {
+const getCommunityPosts = async (req, res) => {
   try {
-    const communityId = req.params.id;
+    const { id: communityId } = req.params;
+    const {
+      search,
+      type,
+      sortBy = 'createdAt',
+      page = 1,
+      limit = 20
+    } = req.query;
 
+    // Validate community ID
     if (!communityId || !communityId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ 
         success: false,
@@ -742,98 +593,8 @@ const uploadCommunityAvatar = async (req, res) => {
       });
     }
 
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'No image file provided'
-      });
-    }
-
+    // Check if community exists
     const community = await Community.findById(communityId);
-
-    if (!community) {
-      // Clean up uploaded file
-      await fs.unlink(req.file.path);
-      return res.status(404).json({ 
-        success: false,
-        message: 'Community not found' 
-      });
-    }
-
-    const isCreator = community.creator.toString() === req.user.id;
-    const isAdmin = community.admins.some(admin => admin.toString() === req.user.id);
-
-    if (!isCreator && !isAdmin) {
-      // Clean up uploaded file
-      await fs.unlink(req.file.path);
-      return res.status(403).json({
-        success: false,
-        message: 'Only community creators and admins can update the avatar'
-      });
-    }
-
-    // Delete old avatar if it exists
-    if (community.avatar?.url) {
-      await deleteOldAvatar(community.avatar.url);
-    }
-
-    // Update community with new avatar
-    community.avatar = {
-      filename: req.file.filename,
-      originalName: req.file.originalname,
-      url: `/uploads/communities/${req.file.filename}`,
-      fileType: req.file.mimetype,
-      fileSize: req.file.size,
-      uploadedAt: new Date()
-    };
-
-    await community.save();
-
-    console.log('Community avatar updated successfully:', communityId);
-
-    res.json({
-      success: true,
-      message: 'Avatar updated successfully',
-      avatar: {
-        url: community.avatar.url,
-        filename: community.avatar.filename,
-        originalName: community.avatar.originalName
-      }
-    });
-  } catch (error) {
-    console.error('Upload avatar error:', error);
-    // Clean up uploaded file
-    if (req.file) {
-      try {
-        await fs.unlink(req.file.path);
-      } catch (unlinkError) {
-        console.error('Error cleaning up uploaded file:', unlinkError);
-      }
-    }
-    res.status(500).json({
-      success: false,
-      message: 'Server error uploading avatar',
-      error: error.message
-    });
-  }
-};
-
-// @desc    Delete community avatar
-// @route   DELETE /api/communities/:id/avatar
-// @access  Private
-const deleteCommunityAvatar = async (req, res) => {
-  try {
-    const communityId = req.params.id;
-
-    if (!communityId || !communityId.match(/^[0-9a-fA-F]{24}$/)) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Invalid community ID' 
-      });
-    }
-
-    const community = await Community.findById(communityId);
-
     if (!community) {
       return res.status(404).json({ 
         success: false,
@@ -841,44 +602,87 @@ const deleteCommunityAvatar = async (req, res) => {
       });
     }
 
-    const isCreator = community.creator.toString() === req.user.id;
-    const isAdmin = community.admins.some(admin => admin.toString() === req.user.id);
+    // Check if user is a member
+    const isMember = community.members.some(
+      member => member.user.toString() === req.user.id
+    );
 
-    if (!isCreator && !isAdmin) {
-      return res.status(403).json({
+    if (!isMember && community.isPrivate) {
+      return res.status(403).json({ 
         success: false,
-        message: 'Only community creators and admins can delete the avatar'
+        message: 'You must be a member to view posts' 
       });
     }
 
-    // Delete avatar file if it exists
-    if (community.avatar?.url) {
-      await deleteOldAvatar(community.avatar.url);
+    // Build query
+    const query = { community: communityId };
+    
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { content: { $regex: search, $options: 'i' } },
+        { tags: { $in: [new RegExp(search, 'i')] } }
+      ];
+    }
+    
+    if (type && type !== 'all') {
+      query.type = type;
     }
 
-    // Clear avatar from database
-    community.avatar = {
-      filename: null,
-      originalName: null,
-      url: null,
-      fileType: null,
-      fileSize: null,
-      uploadedAt: null
-    };
+    // Sort options
+    let sortOptions = {};
+    switch (sortBy) {
+      case 'popular':
+        sortOptions = { 'likes.length': -1, createdAt: -1 };
+        break;
+      case 'replies':
+        sortOptions = { 'replies.length': -1, createdAt: -1 };
+        break;
+      default:
+        sortOptions = { isPinned: -1, createdAt: -1 };
+    }
 
-    await community.save();
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const posts = await CommunityPost.find(query)
+      .populate('author', 'username profile.firstName profile.lastName profile.avatar')
+      .populate('replies.author', 'username profile.firstName profile.lastName profile.avatar')
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(parseInt(limit));
 
-    console.log('Community avatar deleted successfully:', communityId);
+    const total = await CommunityPost.countDocuments(query);
+
+    // Transform posts
+    const transformedPosts = posts.map(post => {
+      const postObj = post.toObject();
+      return {
+        ...postObj,
+        id: postObj._id.toString(),
+        likes: postObj.likes.map(like => like.user.toString()),
+        isLiked: postObj.likes.some(like => like.user.toString() === req.user.id),
+        replies: postObj.replies.map(reply => ({
+          ...reply,
+          id: reply._id ? reply._id.toString() : undefined
+        }))
+      };
+    });
 
     res.json({
       success: true,
-      message: 'Avatar deleted successfully'
+      posts: transformedPosts,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / parseInt(limit)),
+        totalPosts: total,
+        hasMore: skip + posts.length < total
+      }
     });
   } catch (error) {
-    console.error('Delete avatar error:', error);
+    console.error('Get community posts error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error deleting avatar',
+      message: 'Server error fetching posts',
       error: error.message
     });
   }
@@ -893,7 +697,5 @@ module.exports = {
   updateCommunity,
   deleteCommunity,
   getCommunityMembers,
-  uploadCommunityAvatar,
-  deleteCommunityAvatar,
-  upload // Export multer middleware
+  getCommunityPosts
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -10,71 +10,14 @@ import {
   Heart, 
   Reply,
   Search,
-  Filter,
-  FileText,
   HelpCircle,
   Megaphone,
   BookOpen
 } from 'lucide-react';
-import { apiService, User } from '../services/api';
+import { apiService, User, Community, CommunityPost } from '../services/api';
 
 interface CommunityDetailProps {
   user: User;
-}
-
-interface CommunityPost {
-  id: string;
-  title: string;
-  content: string;
-  author: {
-    id: string;
-    username: string;
-    profile: {
-      firstName: string;
-      lastName: string;
-      avatar?: string;
-    };
-  };
-  type: 'discussion' | 'question' | 'announcement' | 'resource';
-  tags: string[];
-  likes: string[];
-  replies: Array<{
-    id: string;
-    author: {
-      id: string;
-      username: string;
-      profile: { firstName: string; lastName: string; avatar?: string; };
-    };
-    content: string;
-    likes: string[];
-    createdAt: string;
-  }>;
-  isPinned: boolean;
-  isLocked: boolean;
-  viewCount: number;
-  createdAt: string;
-}
-
-interface Community {
-  id: string;
-  name: string;
-  description: string;
-  avatar?: string;
-  category: string;
-  memberCount: number;
-  creator: {
-    username: string;
-    profile: { firstName: string; lastName: string; };
-  };
-  members: Array<{
-    user: string | { _id: string; id: string; };
-    role: string;
-    joinedAt: string;
-  }>;
-  university: string;
-  course?: string;
-  tags: string[];
-  isMember?: boolean;
 }
 
 export function CommunityDetail({ user }: CommunityDetailProps) {
@@ -84,18 +27,17 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
   const [community, setCommunity] = useState<Community | null>(null);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [postsLoading, setPostsLoading] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [selectedPost, setSelectedPost] = useState<CommunityPost | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
-  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortBy, setSortBy] = useState('latest');
 
   // Create post form
   const [postForm, setPostForm] = useState({
     title: '',
     content: '',
-    type: 'discussion' as const,
+    type: 'discussion' as 'discussion' | 'question' | 'announcement' | 'resource',
     tags: ''
   });
 
@@ -108,49 +50,35 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
   useEffect(() => {
     if (communityId) {
       fetchCommunityDetails();
+      fetchCommunityPosts();
     }
   }, [communityId]);
 
   useEffect(() => {
-    if (community && isMember) {
+    if (communityId) {
       fetchCommunityPosts();
     }
-  }, [community, searchTerm, filterType, sortBy]);
+  }, [searchTerm, filterType, sortBy]);
 
   const fetchCommunityDetails = async () => {
     try {
-      setLoading(true);
-      console.log('Fetching community details for:', communityId);
-      console.log('Current user ID:', user.id);
-      
       const response = await apiService.getCommunityById(communityId!);
-      console.log('Community API response:', response);
-      
       if (response.success) {
         setCommunity(response.community);
-        console.log('Community set:', response.community);
-        console.log('Community members:', response.community.members);
-        console.log('isMember from API:', response.community.isMember);
       }
     } catch (error) {
       console.error('Failed to fetch community details:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
   const fetchCommunityPosts = async () => {
     try {
-      setPostsLoading(true);
-      console.log('Fetching posts for community:', communityId);
-      
-      const params: any = {};
-      if (searchTerm) params.search = searchTerm;
-      if (filterType !== 'all') params.type = filterType;
-      params.sortBy = sortBy;
-
-      const response = await apiService.getCommunityPosts(communityId!, params);
-      console.log('Posts API response:', response);
+      setLoading(true);
+      const response = await apiService.getCommunityPosts(communityId!, {
+        search: searchTerm,
+        type: filterType !== 'all' ? filterType : undefined,
+        sortBy
+      });
       
       if (response.success) {
         setPosts(response.posts || []);
@@ -158,33 +86,26 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
     } catch (error) {
       console.error('Failed to fetch community posts:', error);
     } finally {
-      setPostsLoading(false);
+      setLoading(false);
     }
   };
 
   const handleCreatePost = async () => {
     try {
-      if (!postForm.title.trim() || !postForm.content.trim()) {
-        alert('Please fill in all required fields');
-        return;
-      }
-
       const postData = {
-        title: postForm.title.trim(),
-        content: postForm.content.trim(),
+        title: postForm.title,
+        content: postForm.content,
         type: postForm.type,
         communityId: communityId!,
         tags: postForm.tags.split(',').map(tag => tag.trim()).filter(Boolean)
       };
 
-      console.log('Creating post:', postData);
       const response = await apiService.createCommunityPost(postData);
       
       if (response.success) {
         setShowCreatePost(false);
         setPostForm({ title: '', content: '', type: 'discussion', tags: '' });
         await fetchCommunityPosts();
-        alert('Post created successfully!');
       }
     } catch (error: any) {
       console.error('Failed to create post:', error);
@@ -194,24 +115,13 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
 
   const handleReply = async (postId: string) => {
     try {
-      if (!replyForm.content.trim()) {
-        alert('Please enter a reply');
-        return;
-      }
-
-      console.log('Replying to post:', postId, 'with content:', replyForm.content);
-      const response = await apiService.replyToPost(postId, { content: replyForm.content.trim() });
+      if (!replyForm.content.trim()) return;
+      
+      const response = await apiService.replyToPost(postId, { content: replyForm.content });
       
       if (response.success) {
         setReplyForm({ content: '', postId: '' });
         await fetchCommunityPosts();
-        if (response.post) {
-          const updatedPosts = posts.map(p => p.id === postId ? response.post : p);
-          setPosts(updatedPosts);
-          if (selectedPost?.id === postId) {
-            setSelectedPost(response.post);
-          }
-        }
       }
     } catch (error: any) {
       console.error('Failed to reply:', error);
@@ -221,102 +131,27 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
 
   const handleLikePost = async (postId: string) => {
     try {
-      console.log('Liking post:', postId);
-      const response = await apiService.likePost(postId);
-      
-      if (response.success) {
-        const updatedPosts = posts.map(post => {
-          if (post.id === postId) {
-            const isLiked = post.likes.includes(user.id);
-            return {
-              ...post,
-              likes: isLiked 
-                ? post.likes.filter(id => id !== user.id)
-                : [...post.likes, user.id]
-            };
-          }
-          return post;
-        });
-        setPosts(updatedPosts);
-
-        if (selectedPost?.id === postId) {
-          const isLiked = selectedPost.likes.includes(user.id);
-          setSelectedPost({
-            ...selectedPost,
-            likes: isLiked 
-              ? selectedPost.likes.filter(id => id !== user.id)
-              : [...selectedPost.likes, user.id]
-          });
-        }
-      }
+      await apiService.likePost(postId);
+      await fetchCommunityPosts();
     } catch (error) {
       console.error('Failed to like post:', error);
     }
   };
 
   const handleJoinCommunity = async () => {
+    if (!communityId) return;
+    
     try {
-      console.log('Joining community:', communityId);
-      const response = await apiService.joinCommunity(communityId!);
-      
+      const response = await apiService.joinCommunity(communityId);
       if (response.success) {
         await fetchCommunityDetails();
-        alert('Successfully joined community!');
+        await fetchCommunityPosts();
       }
     } catch (error: any) {
       console.error('Failed to join community:', error);
       alert(error.message || 'Failed to join community');
     }
   };
-
-  // Robust membership checking with debug logging
-  const isMember = useMemo(() => {
-    if (!community || !user) {
-      console.log('No community or user available for membership check');
-      return false;
-    }
-    
-    // First check if the API already determined membership
-    if (community.isMember !== undefined) {
-      console.log('Using API isMember value:', community.isMember);
-      return community.isMember;
-    }
-    
-    // Fallback to manual checking
-    const membershipCheck = community.members?.some(member => {
-      let memberUserId;
-      
-      if (typeof member.user === 'string') {
-        memberUserId = member.user;
-      } else if (member.user && typeof member.user === 'object') {
-        memberUserId = member.user._id || member.user.id;
-      }
-      
-      const isMatch = memberUserId === user.id;
-      console.log('Checking member:', { memberUserId, userId: user.id, isMatch });
-      return isMatch;
-    }) || false;
-    
-    console.log('Final membership check result:', membershipCheck);
-    return membershipCheck;
-  }, [community, user]);
-
-  // Debug effect
-  useEffect(() => {
-    console.log('=== MEMBERSHIP DEBUG ===');
-    console.log('Community:', community);
-    console.log('User:', user);
-    console.log('isMember result:', isMember);
-    
-    if (community && user) {
-      console.log('Community members detail:', community.members.map(m => ({
-        user: m.user,
-        userType: typeof m.user,
-        userId: typeof m.user === 'string' ? m.user : m.user?._id || m.user?.id,
-        role: m.role
-      })));
-    }
-  }, [community, user, isMember]);
 
   const getPostTypeIcon = (type: string) => {
     switch (type) {
@@ -340,21 +175,49 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
     const date = new Date(dateString);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
     
     if (days > 0) return `${days}d ago`;
     if (hours > 0) return `${hours}h ago`;
+    if (minutes > 0) return `${minutes}m ago`;
     return 'Just now';
   };
 
-  const getAvatarUrl = (profile: any, username: string) => {
-    return profile?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;
+  // Check if user is a member - handle different data structures
+  const isMember = community?.isMember || 
+    community?.members?.some(member => {
+      const memberId = typeof member.user === 'string' 
+        ? member.user 
+        : (member.user as any)?._id || (member.user as any)?.id;
+      return memberId === user.id || memberId === user._id;
+    });
+
+  // Get creator name - handle different data structures
+  const getCreatorName = () => {
+    if (!community?.creator) return 'Unknown';
+    
+    if (typeof community.creator === 'string') {
+      return 'Community Creator';
+    }
+    
+    const creator = community.creator as any;
+    if (creator.profile) {
+      return `${creator.profile.firstName} ${creator.profile.lastName}`;
+    }
+    
+    return creator.username || 'Community Creator';
   };
 
-  console.log('Render - Community:', community);
-  console.log('Render - isMember:', isMember);
-  console.log('Render - User:', user);
+  // Check if post is liked by user
+  const isPostLiked = (post: CommunityPost) => {
+    return post.likes?.some(
+      (like: any) =>
+        (typeof like === 'string' && (like === user.id || like === user._id)) ||
+        (typeof like === 'object' && (like.user === user.id || like.user === user._id))
+    );
+  };
 
   if (loading && !community) {
     return (
@@ -421,7 +284,7 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
                   <MessageCircle className="w-4 h-4" />
                   <span>{posts.length} posts</span>
                 </div>
-                <span>Created by {community.creator.profile.firstName} {community.creator.profile.lastName}</span>
+                <span>Created by {getCreatorName()}</span>
               </div>
             </div>
 
@@ -481,119 +344,126 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
               onChange={(e) => setSortBy(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
-              <option value="createdAt">Latest</option>
+              <option value="latest">Latest</option>
               <option value="popular">Most Popular</option>
               <option value="replies">Most Replies</option>
             </select>
           </div>
 
           {/* Posts List */}
-          {postsLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {posts.length === 0 ? (
-                <div className="text-center py-12 bg-white/60 backdrop-blur-sm rounded-2xl">
-                  <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-xl text-gray-900 mb-2">No posts yet</h3>
-                  <p className="text-gray-600 mb-6">Be the first to start a discussion!</p>
-                  <button
-                    onClick={() => setShowCreatePost(true)}
-                    className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                  >
-                    Create First Post
-                  </button>
-                </div>
-              ) : (
-                posts.map((post) => {
-                  const TypeIcon = getPostTypeIcon(post.type);
-                  const isLiked = post.likes.includes(user.id);
-                  
-                  return (
-                    <div key={post.id} className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6 hover:shadow-xl transition-all duration-300">
-                      <div className="flex items-start space-x-4">
-                        <img
-                          src={getAvatarUrl(post.author.profile, post.author.username)}
-                          alt={post.author.username}
-                          className="w-12 h-12 rounded-full ring-2 ring-purple-200"
-                        />
+          <div className="space-y-4">
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+              </div>
+            ) : posts.length === 0 ? (
+              <div className="text-center py-12 bg-white/60 backdrop-blur-sm rounded-2xl">
+                <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-xl text-gray-900 mb-2">No posts yet</h3>
+                <p className="text-gray-600 mb-6">Be the first to start a discussion!</p>
+                <button
+                  onClick={() => setShowCreatePost(true)}
+                  className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  Create First Post
+                </button>
+              </div>
+            ) : (
+              posts.map((post) => {
+                const TypeIcon = getPostTypeIcon(post.type);
+                const postLiked = isPostLiked(post);
+                
+                return (
+                  <div key={post.id} className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6 hover:shadow-xl transition-all duration-300">
+                    <div className="flex items-start space-x-4">
+                      <img
+                        src={post.author?.profile?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'}
+                        alt={post.author?.username || 'User'}
+                        className="w-12 h-12 rounded-full ring-2 ring-purple-200"
+                      />
+                      
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <span className="font-semibold text-gray-900">
+                            {post.author?.profile ? 
+                              `${post.author.profile.firstName} ${post.author.profile.lastName}` : 
+                              post.author?.username || 'Anonymous'}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getPostTypeColor(post.type)}`}>
+                            <TypeIcon className="w-3 h-3" />
+                            <span>{post.type}</span>
+                          </span>
+                          <span className="text-sm text-gray-500">{formatTimeAgo(post.createdAt)}</span>
+                          {post.isPinned && <Pin className="w-4 h-4 text-yellow-600" />}
+                          {post.isLocked && <Lock className="w-4 h-4 text-red-600" />}
+                        </div>
                         
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <span className="font-semibold text-gray-900">
-                              {post.author.profile.firstName} {post.author.profile.lastName}
-                            </span>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getPostTypeColor(post.type)}`}>
-                              <TypeIcon className="w-3 h-3" />
-                              <span>{post.type}</span>
-                            </span>
-                            <span className="text-sm text-gray-500">{formatTimeAgo(post.createdAt)}</span>
-                            {post.isPinned && <Pin className="w-4 h-4 text-yellow-600" />}
-                            {post.isLocked && <Lock className="w-4 h-4 text-red-600" />}
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{post.title}</h3>
+                        <p className="text-gray-700 mb-4 leading-relaxed">{post.content}</p>
+                        
+                        {post.tags && post.tags.length > 0 && (
+                          <div className="flex items-center space-x-2 mb-4">
+                            {post.tags.map((tag) => (
+                              <span key={tag} className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs">
+                                #{tag}
+                              </span>
+                            ))}
                           </div>
+                        )}
+                        
+                        <div className="flex items-center space-x-6">
+                          <button
+                            onClick={() => handleLikePost(post.id)}
+                            className="flex items-center space-x-2 text-gray-500 hover:text-red-500 transition-colors"
+                          >
+                            <Heart className={`w-5 h-5 ${postLiked ? 'fill-red-500 text-red-500' : ''}`} />
+                            <span>{post.likes?.length || 0}</span>
+                          </button>
                           
-                          <h3 className="text-lg font-semibold text-gray-900 mb-2">{post.title}</h3>
-                          <p className="text-gray-700 mb-4 leading-relaxed">{post.content}</p>
+                          <button
+                            onClick={() => setSelectedPost(selectedPost?.id === post.id ? null : post)}
+                            className="flex items-center space-x-2 text-gray-500 hover:text-blue-500 transition-colors"
+                          >
+                            <Reply className="w-5 h-5" />
+                            <span>{post.replies?.length || 0} replies</span>
+                          </button>
                           
-                          {post.tags.length > 0 && (
-                            <div className="flex items-center space-x-2 mb-4">
-                              {post.tags.map((tag) => (
-                                <span key={tag} className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs">
-                                  #{tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          
-                          <div className="flex items-center space-x-6">
-                            <button
-                              onClick={() => handleLikePost(post.id)}
-                              className="flex items-center space-x-2 text-gray-500 hover:text-red-500 transition-colors"
-                            >
-                              <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
-                              <span>{post.likes.length}</span>
-                            </button>
-                            
-                            <button
-                              onClick={() => setSelectedPost(selectedPost === post ? null : post)}
-                              className="flex items-center space-x-2 text-gray-500 hover:text-blue-500 transition-colors"
-                            >
-                              <Reply className="w-5 h-5" />
-                              <span>{post.replies.length} replies</span>
-                            </button>
-                            
-                            <span className="text-gray-500 text-sm">{post.viewCount} views</span>
-                          </div>
+                          <span className="text-gray-500 text-sm">{post.viewCount || 0} views</span>
+                        </div>
 
-                          {/* Replies Section */}
-                          {selectedPost === post && (
-                            <div className="mt-6 border-t border-gray-200 pt-6">
-                              <div className="space-y-4 mb-6">
-                                {post.replies.map((reply) => (
-                                  <div key={reply.id} className="flex items-start space-x-3 bg-gray-50 rounded-lg p-4">
-                                    <img
-                                      src={getAvatarUrl(reply.author.profile, reply.author.username)}
-                                      alt={reply.author.username}
-                                      className="w-8 h-8 rounded-full"
-                                    />
-                                    <div className="flex-1">
-                                      <div className="flex items-center space-x-2 mb-1">
-                                        <span className="font-medium text-sm">
-                                          {reply.author.profile.firstName} {reply.author.profile.lastName}
-                                        </span>
-                                        <span className="text-xs text-gray-500">{formatTimeAgo(reply.createdAt)}</span>
-                                      </div>
-                                      <p className="text-sm text-gray-700">{reply.content}</p>
+                        {/* Replies Section */}
+                        {selectedPost?.id === post.id && (
+                          <div className="mt-6 border-t border-gray-200 pt-6">
+                            <div className="space-y-4 mb-6">
+                              {post.replies && post.replies.map((reply) => (
+                                <div key={reply.id || reply._id} className="flex items-start space-x-3 bg-gray-50 rounded-lg p-4">
+                                  <img
+                                    src={reply.author?.profile?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=reply'}
+                                    alt={reply.author?.username || 'User'}
+                                    className="w-8 h-8 rounded-full"
+                                  />
+                                  <div className="flex-1">
+                                    <div className="flex items-center space-x-2 mb-1">
+                                      <span className="font-medium text-sm">
+                                        {reply.author?.profile ? 
+                                          `${reply.author.profile.firstName} ${reply.author.profile.lastName}` : 
+                                          reply.author?.username || 'Anonymous'}
+                                      </span>
+                                      <span className="text-xs text-gray-500">{formatTimeAgo(reply.createdAt)}</span>
                                     </div>
+                                    <p className="text-sm text-gray-700">{reply.content}</p>
                                   </div>
-                                ))}
-                              </div>
-                              
+                                </div>
+                              ))}
+                              {(!post.replies || post.replies.length === 0) && (
+                                <p className="text-gray-500 text-sm text-center py-4">No replies yet. Be the first to reply!</p>
+                              )}
+                            </div>
+                            
+                            {!post.isLocked && (
                               <div className="flex space-x-3">
                                 <img
-                                  src={getAvatarUrl(user.profile, user.username)}
+                                  src={user.profile?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=user'}
                                   alt={user.username}
                                   className="w-8 h-8 rounded-full"
                                 />
@@ -603,6 +473,11 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
                                     placeholder="Write a reply..."
                                     value={replyForm.postId === post.id ? replyForm.content : ''}
                                     onChange={(e) => setReplyForm({ content: e.target.value, postId: post.id })}
+                                    onKeyPress={(e) => {
+                                      if (e.key === 'Enter' && replyForm.content.trim()) {
+                                        handleReply(post.id);
+                                      }
+                                    }}
                                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                                   />
                                   <button
@@ -614,16 +489,19 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
                                   </button>
                                 </div>
                               </div>
-                            </div>
-                          )}
-                        </div>
+                            )}
+                            {post.isLocked && (
+                              <p className="text-gray-500 text-sm text-center py-4">This post is locked and cannot receive new replies.</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
-                  );
-                })
-              )}
-            </div>
-          )}
+                  </div>
+                );
+              })
+            )}
+          </div>
         </>
       )}
 
@@ -691,7 +569,8 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
               </button>
               <button
                 onClick={handleCreatePost}
-                className="bg-purple-600 text-gray-600 px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                disabled={!postForm.title.trim() || !postForm.content.trim()}
+                className="bg-purple-600 text-gray-600 px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Create Post
               </button>

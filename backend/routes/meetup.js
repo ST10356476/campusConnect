@@ -27,10 +27,13 @@ router.post('/:id/join', meetupJoinedMiddleware, ctrl.joinMeetup);
 // Leave meetup
 router.post('/:id/leave', ctrl.leaveMeetup);
 
+
 // Delete meetup
 router.delete('/:id', ctrl.deleteMeetup);
 
 router.post('/', protect, meetupHostedMiddleware, ctrl.createMeetup);
 router.post('/:id/join', protect, meetupJoinedMiddleware, ctrl.joinMeetup);
+
+router.delete('/:id', ctrl.deleteMeetup);   
 
 module.exports = router;

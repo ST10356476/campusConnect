@@ -4,8 +4,8 @@ import { Navbar } from './components/ui/Navbar';
 import { AuthModal } from './components/auth/AuthModal';
 import { Dashboard } from './pages/Dashboard';
 import Communities from './pages/Communities';
-import StudyMaterials from './pages/StudyMaterials';
-import { Profile } from './pages/Profile';
+import StudyMaterials from './pages/StudyMaterials'
+;import { Profile } from './pages/Profile';
 import { Meetups } from './pages/Meetups';
 import { Achievements } from './components/profile/Achievements';
 import { LiveSession } from './components/live-session/LiveSession';

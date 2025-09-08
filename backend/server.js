@@ -30,6 +30,8 @@ require('./src/models/User');
 require('./src/models/Community');
 require('./src/models/CommunityPost');
 require('./src/models/Achievement');
+require('./src/models/StudyMaterial');
+require('./src/models/Meetup');
 
 // Middleware
 app.use(helmet());
@@ -56,6 +58,10 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/communities', require('./routes/communities'));
 app.use('/api/posts', require('./routes/posts'));
 app.use('/api/study-materials', studyMaterialRoutes);
+
+const meetupRoute = require('./routes/meetup');
+app.use('/api/meetups', meetupRoute);
+
 
 // Health check
 app.get('/health', (req, res) => {

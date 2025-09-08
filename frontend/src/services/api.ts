@@ -533,6 +533,121 @@ class ApiService {
       method: 'DELETE',
     });
   }
+
+      async getMeetups(params?: {
+  type?: string;
+  status?: string;
+  community?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+}): Promise<{
+  success: boolean;
+  meetups: any[];
+  pagination: any;
+}> {
+  const queryParams = new URLSearchParams();
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, String(value));
+      }
+    });
+  }
+  
+  const queryString = queryParams.toString();
+  const endpoint = queryString ? `/meetups?${queryString}` : '/meetups';
+  
+  return this.request(endpoint);
+}
+
+async createMeetup(meetupData: {
+  title: string;
+  description: string;
+  type: string;
+  location: {
+    type: string;
+    venue?: string;
+    address?: string;
+    meetingLink?: string;
+    coordinates?: {
+      latitude: number;
+      longitude: number;
+    };
+  };
+  dateTime: {
+    start: Date;
+    end: Date;
+  };
+  maxAttendees?: number;
+  community?: string;
+  tags?: string[];
+  requirements?: string;
+  isPublic?: boolean;
+  recurring?: {
+    isRecurring: boolean;
+    pattern?: string;
+    endDate?: Date;
+  };
+}): Promise<{
+  success: boolean;
+  meetup: any;
+  message: string;
+}> {
+  return this.request('/meetups', {
+    method: 'POST',
+    body: JSON.stringify(meetupData),
+  });
+}
+
+async joinMeetup(meetupId: string): Promise<{
+  success: boolean;
+  meetup: any;
+  message: string;
+}> {
+  return this.request(`/meetups/${meetupId}/join`, {
+    method: 'POST',
+  });
+}
+
+async leaveMeetup(meetupId: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  return this.request(`/meetups/${meetupId}/leave`, {
+    method: 'POST',
+  });
+}
+
+async getMeetupById(meetupId: string): Promise<{
+  success: boolean;
+  meetup: any;
+}> {
+  return this.request(`/meetups/${meetupId}`);
+}
+
+async updateMeetup(meetupId: string, updateData: any): Promise<{
+  success: boolean;
+  meetup: any;
+  message: string;
+}> {
+  return this.request(`/meetups/${meetupId}`, {
+    method: 'PUT',
+    body: JSON.stringify(updateData),
+  });
+}
+
+async deleteMeetup(meetupId: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  return this.request(`/meetups/${meetupId}`, {
+    method: 'DELETE',
+  });
+}
+
+  
 }
 
 export const apiService = new ApiService();

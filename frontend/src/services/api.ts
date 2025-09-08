@@ -26,14 +26,40 @@ export interface User {
     year: number;
     skills?: string[];
     interests?: string[];
+
+    location?: string;
+    joinedDate?: string;
+
   };
-  points: number;
+  points: number; // Keep this for backward compatibility - will always be 0
   communities: string[];
   achievements: string[];
   isVerified: boolean;
   lastActive: string;
   name: string;
   badges: string[];
+}
+
+export interface Achievement {
+  _id: string;
+  name: string;
+  description: string;
+  icon: string;
+  badge: string;
+  criteria: {
+    type: string;
+    value: number;
+  };
+  rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+  unlocked: boolean;
+  unlockedAt?: string;
+  progress: number;
+}
+
+export interface AchievementStats {
+  unlockedCount: number;
+  totalCount: number;
+  completionRate: number;
 }
 
 export interface Community {
@@ -225,7 +251,14 @@ class ApiService {
   }
 
   async getProfile(): Promise<{ success: boolean; user: User }> {
-    return this.request('/auth/me');
+    const response = await this.request('/auth/me');
+    
+    // Ensure backward compatibility by adding points field if missing
+    if (response.success && response.user) {
+      response.user.points = response.user.points || 0;
+    }
+    
+    return response;
   }
 
   async updateProfile(profileData: any) {
@@ -235,6 +268,22 @@ class ApiService {
     });
   }
 
+
+  // Achievements
+  async getAchievements(): Promise<{ 
+    success: boolean; 
+    data: { 
+      achievements: Achievement[]; 
+      stats: AchievementStats;
+    }
+  }> {
+    return this.request('/achievements');
+  }
+
+  // Communities
+  async getCommunities(params: any = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.request(`/communities?${queryString}`);
   // Community methods
   async getCommunities(params?: {
     category?: string;
@@ -279,6 +328,47 @@ class ApiService {
     });
   }
 
+  async createCommunityWithImage(formData: FormData) {
+    const token = this.getToken();
+    const response = await fetch(`${this.baseURL}/communities`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+    }
+    return data;
+  }
+
+  async updateCommunityWithImage(communityId: string, formData: FormData) {
+    const token = this.getToken();
+    const response = await fetch(`${this.baseURL}/communities/${communityId}`, {
+      method: 'PUT',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+    }
+    return data;
+  }
+
+  async uploadCommunityAvatar(communityId: string, file: File) {
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    const token = this.getToken();
+    const response = await fetch(`${this.baseURL}/communities/${communityId}/avatar`, {
+
   async getCommunityById(communityId: string): Promise<{
     success: boolean;
     community: Community;
@@ -291,11 +381,14 @@ class ApiService {
     community: Community;
     message: string;
   }> {
-    return this.request(`/communities/${communityId}/join`, {
+
       method: 'POST',
     });
   }
 
+  async deleteCommunityAvatar(communityId: string) {
+    return this.request(`/communities/${communityId}/avatar`, {
+      method: 'DELETE',
   async leaveCommunity(communityId: string): Promise<{
     success: boolean;
     message: string;
@@ -435,6 +528,15 @@ class ApiService {
     });
   }
 
+  async updateCommunity(communityId: string, updateData: any) {
+    return this.request(`/communities/${communityId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData),
+    });
+  }
+
+  async deleteCommunity(communityId: string) {
+    return this.request(`/communities/${communityId}`, {
   async deletePost(postId: string): Promise<{
     success: boolean;
     message: string;
@@ -463,6 +565,10 @@ class ApiService {
       method: 'POST',
     });
   }
+
+  async uploadFile(file: File, endpoint: string) {
+    const formData = new FormData();
+    formData.append('file', file);
 
   // Study Materials methods
   async getStudyMaterials(params?: any): Promise<{

@@ -1,13 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Trophy, Star, Target, Users, MessageSquare, Calendar, BookOpen, Award, Lock } from 'lucide-react';
+
+interface Achievement {
+  _id: string;
+  name: string;
+  description: string;
+  icon: string;
+  badge: string;
+  criteria: {
+    type: string;
+    value: number;
+  };
+  rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+  unlocked: boolean;
+  unlockedAt?: string;
+  progress: number;
+}
 
 interface User {
   id: string;
   name: string;
   email: string;
   avatar?: string;
-  badges: string[];
-  points: number;
 }
 
 interface AchievementsProps {
@@ -16,131 +30,107 @@ interface AchievementsProps {
 
 export function Achievements({ user }: AchievementsProps) {
   const [activeCategory, setActiveCategory] = useState('all' as 'all' | 'community' | 'learning' | 'participation');
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    unlockedCount: 0,
+    totalCount: 0,
+    completionRate: 0
+  });
 
-  const achievements = [
-    {
-      id: 'first-question',
-      title: 'First Question',
-      description: 'Posted your first question to the community',
-      icon: MessageSquare,
-      category: 'community',
-      points: 10,
-      unlocked: true,
-      unlockedAt: '2024-01-10',
-      color: 'blue',
-      rarity: 'common'
-    },
-    {
-      id: 'helpful-member',
-      title: 'Helpful Member',
-      description: 'Received 10 likes on your answers',
-      icon: Star,
-      category: 'community',
-      points: 25,
-      unlocked: true,
-      unlockedAt: '2024-01-12',
-      color: 'yellow',
-      rarity: 'common'
-    },
-    {
-      id: 'study-buddy',
-      title: 'Study Buddy',
-      description: 'Attended 5 study meetups',
-      icon: Users,
-      category: 'participation',
-      points: 50,
-      unlocked: false,
-      progress: 3,
-      target: 5,
-      color: 'green',
-      rarity: 'uncommon'
-    },
-    {
-      id: 'knowledge-sharer',
-      title: 'Knowledge Sharer',
-      description: 'Uploaded 10 study materials',
-      icon: BookOpen,
-      category: 'learning',
-      points: 75,
-      unlocked: false,
-      progress: 8,
-      target: 10,
-      color: 'purple',
-      rarity: 'uncommon'
-    },
-    {
-      id: 'community-leader',
-      title: 'Community Leader',
-      description: 'Hosted 3 successful study sessions',
-      icon: Trophy,
-      category: 'participation',
-      points: 100,
-      unlocked: false,
-      progress: 1,
-      target: 3,
-      color: 'orange',
-      rarity: 'rare'
-    },
-    {
-      id: 'master-learner',
-      title: 'Master Learner',
-      description: 'Earned 1000 achievement points',
-      icon: Award,
-      category: 'learning',
-      points: 200,
-      unlocked: false,
-      progress: 100,
-      target: 1000,
-      color: 'red',
-      rarity: 'legendary'
-    },
-    {
-      id: 'early-bird',
-      title: 'Early Bird',
-      description: 'Joined 5 morning study sessions',
-      icon: Calendar,
-      category: 'participation',
-      points: 30,
-      unlocked: true,
-      unlockedAt: '2024-01-08',
-      color: 'indigo',
-      rarity: 'common'
-    },
-    {
-      id: 'discussion-starter',
-      title: 'Discussion Starter',
-      description: 'Started 20 discussions across communities',
-      icon: MessageSquare,
-      category: 'community',
-      points: 60,
-      unlocked: false,
-      progress: 12,
-      target: 20,
-      color: 'pink',
-      rarity: 'uncommon'
-    }
-  ];
+  // Map achievement names to categories
+  const getCategory = (achievementName: string): string => {
+    const categoryMap: Record<string, string> = {
+      'First Question': 'community',
+      'Helpful Member': 'community',
+      'Discussion Starter': 'community',
+      'Study Buddy': 'participation',
+      'Community Leader': 'participation',
+      'Early Bird': 'participation',
+      'Knowledge Sharer': 'learning',
+      'Master Learner': 'learning'
+    };
+    return categoryMap[achievementName] || 'community';
+  };
+
+  // Map icon names to components
+  const getIconComponent = (iconName: string) => {
+    const iconMap: Record<string, any> = {
+      'MessageSquare': MessageSquare,
+      'Star': Star,
+      'Users': Users,
+      'BookOpen': BookOpen,
+      'Trophy': Trophy,
+      'Award': Award,
+      'Calendar': Calendar
+    };
+    return iconMap[iconName] || MessageSquare;
+  };
+
+  // Map achievement names to colors
+  const getAchievementColor = (achievementName: string): string => {
+    const colorMap: Record<string, string> = {
+      'First Question': 'blue',
+      'Helpful Member': 'yellow',
+      'Study Buddy': 'green',
+      'Knowledge Sharer': 'purple',
+      'Community Leader': 'orange',
+      'Master Learner': 'red',
+      'Early Bird': 'indigo',
+      'Discussion Starter': 'pink'
+    };
+    return colorMap[achievementName] || 'blue';
+  };
+
+  // Fetch achievements from backend
+  useEffect(() => {
+    const fetchAchievements = async () => {
+      try {
+        setLoading(true);
+        const { apiService } = await import('../../services/api');
+        const response = await apiService.getAchievements();
+        
+        if (response.success) {
+          setAchievements(response.data.achievements);
+          setStats(response.data.stats);
+        } else {
+          console.error('Failed to fetch achievements');
+        }
+      } catch (error) {
+        console.error('Error fetching achievements:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAchievements();
+  }, []);
+
+  // Group achievements by category
+  const achievementsByCategory = achievements.reduce((acc, achievement) => {
+    const category = getCategory(achievement.name);
+    acc[category] = (acc[category] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   const categories = [
     { id: 'all', label: 'All Achievements', count: achievements.length },
-    { id: 'community', label: 'Community', count: achievements.filter(a => a.category === 'community').length },
-    { id: 'learning', label: 'Learning', count: achievements.filter(a => a.category === 'learning').length },
-    { id: 'participation', label: 'Participation', count: achievements.filter(a => a.category === 'participation').length }
+    { id: 'community', label: 'Community', count: achievementsByCategory.community || 0 },
+    { id: 'learning', label: 'Learning', count: achievementsByCategory.learning || 0 },
+    { id: 'participation', label: 'Participation', count: achievementsByCategory.participation || 0 }
   ];
 
   const filteredAchievements = activeCategory === 'all' 
     ? achievements 
-    : achievements.filter(a => a.category === activeCategory);
-
-  const unlockedCount = achievements.filter(a => a.unlocked).length;
-  const totalPoints = achievements.filter(a => a.unlocked).reduce((sum, a) => sum + a.points, 0);
+    : achievements.filter(a => getCategory(a.name) === activeCategory);
 
   const getRarityColor = (rarity: string) => {
     switch (rarity) {
       case 'common': return 'text-gray-600';
       case 'uncommon': return 'text-green-600';
       case 'rare': return 'text-blue-600';
-      case 'legendary': return 'text-purple-600';
+      case 'epic': return 'text-purple-600';
+      case 'legendary': return 'text-yellow-600';
       default: return 'text-gray-600';
     }
   };
@@ -164,6 +154,22 @@ export function Achievements({ user }: AchievementsProps) {
     return colorMap[color] || 'bg-gray-100 text-gray-600';
   };
 
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2 mb-8"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-gray-200 rounded-lg h-24"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
@@ -180,7 +186,7 @@ export function Achievements({ user }: AchievementsProps) {
               <Trophy className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-2xl text-gray-900">{unlockedCount}/{achievements.length}</p>
+              <p className="text-2xl text-gray-900">{stats.unlockedCount}/{stats.totalCount}</p>
               <p className="text-sm text-gray-600">Achievements Unlocked</p>
             </div>
           </div>
@@ -192,8 +198,8 @@ export function Achievements({ user }: AchievementsProps) {
               <Star className="w-6 h-6 text-yellow-600" />
             </div>
             <div>
-              <p className="text-2xl text-gray-900">{totalPoints}</p>
-              <p className="text-sm text-gray-600">Total Points</p>
+              <p className="text-2xl text-gray-900">{stats.unlockedCount}</p>
+              <p className="text-sm text-gray-600">Badges Earned</p>
             </div>
           </div>
         </div>
@@ -204,7 +210,7 @@ export function Achievements({ user }: AchievementsProps) {
               <Target className="w-6 h-6 text-green-600" />
             </div>
             <div>
-              <p className="text-2xl text-gray-900">{Math.round((unlockedCount / achievements.length) * 100)}%</p>
+              <p className="text-2xl text-gray-900">{stats.completionRate}%</p>
               <p className="text-sm text-gray-600">Completion Rate</p>
             </div>
           </div>
@@ -233,12 +239,13 @@ export function Achievements({ user }: AchievementsProps) {
       {/* Achievement Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredAchievements.map((achievement) => {
-          const Icon = achievement.icon;
-          const colorClasses = getColorClasses(achievement.color, achievement.unlocked);
+          const IconComponent = getIconComponent(achievement.icon);
+          const color = getAchievementColor(achievement.name);
+          const colorClasses = getColorClasses(color, achievement.unlocked);
           
           return (
             <div
-              key={achievement.id}
+              key={achievement._id}
               className={`bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all hover:shadow-md ${
                 achievement.unlocked ? 'border-l-4 border-l-blue-500' : ''
               }`}
@@ -246,7 +253,7 @@ export function Achievements({ user }: AchievementsProps) {
               <div className="flex items-start space-x-4">
                 <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${colorClasses}`}>
                   {achievement.unlocked ? (
-                    <Icon className="w-6 h-6" />
+                    <IconComponent className="w-6 h-6" />
                   ) : (
                     <Lock className="w-6 h-6" />
                   )}
@@ -255,16 +262,11 @@ export function Achievements({ user }: AchievementsProps) {
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className={`text-lg ${achievement.unlocked ? 'text-gray-900' : 'text-gray-500'}`}>
-                      {achievement.title}
+                      {achievement.name}
                     </h3>
-                    <div className="flex items-center space-x-2">
-                      <span className={`text-xs uppercase tracking-wide ${getRarityColor(achievement.rarity)}`}>
-                        {achievement.rarity}
-                      </span>
-                      <span className={`text-sm ${achievement.unlocked ? 'text-blue-600' : 'text-gray-400'}`}>
-                        {achievement.points} pts
-                      </span>
-                    </div>
+                    <span className={`text-xs uppercase tracking-wide ${getRarityColor(achievement.rarity)}`}>
+                      {achievement.rarity}
+                    </span>
                   </div>
                   
                   <p className={`text-sm mb-4 ${achievement.unlocked ? 'text-gray-600' : 'text-gray-400'}`}>
@@ -277,35 +279,28 @@ export function Achievements({ user }: AchievementsProps) {
                         <div className="bg-green-500 h-2 rounded-full w-full"></div>
                       </div>
                       <span className="text-xs text-green-600 whitespace-nowrap">
-                        Unlocked {new Date(achievement.unlockedAt!).toLocaleDateString()}
+                        Unlocked {achievement.unlockedAt ? new Date(achievement.unlockedAt).toLocaleDateString() : ''}
                       </span>
                     </div>
-                  ) : achievement.progress !== undefined ? (
+                  ) : (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600">Progress</span>
                         <span className="text-gray-600">
-                          {achievement.progress}/{achievement.target}
+                          {achievement.progress}/{achievement.criteria.value}
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
                           className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                           style={{
-                            width: `${Math.min((achievement.progress! / achievement.target!) * 100, 100)}%`
+                            width: `${Math.min((achievement.progress / achievement.criteria.value) * 100, 100)}%`
                           }}
                         ></div>
                       </div>
                       <span className="text-xs text-gray-500">
-                        {achievement.target! - achievement.progress!} more to unlock
+                        {achievement.criteria.value - achievement.progress} more to unlock
                       </span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-2">
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-gray-300 h-2 rounded-full w-0"></div>
-                      </div>
-                      <span className="text-xs text-gray-500 whitespace-nowrap">Not started</span>
                     </div>
                   )}
                 </div>
@@ -325,27 +320,35 @@ export function Achievements({ user }: AchievementsProps) {
               .sort((a, b) => new Date(b.unlockedAt!).getTime() - new Date(a.unlockedAt!).getTime())
               .slice(0, 3)
               .map((achievement) => {
-                const Icon = achievement.icon;
-                const colorClasses = getColorClasses(achievement.color, true);
+                const IconComponent = getIconComponent(achievement.icon);
+                const color = getAchievementColor(achievement.name);
+                const colorClasses = getColorClasses(color, true);
                 
                 return (
-                  <div key={achievement.id} className="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                  <div key={achievement._id} className="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${colorClasses}`}>
-                      <Icon className="w-5 h-5" />
+                      <IconComponent className="w-5 h-5" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="text-gray-900">{achievement.title}</h4>
+                      <h4 className="text-gray-900">{achievement.name}</h4>
                       <p className="text-sm text-gray-600">{achievement.description}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-blue-600">+{achievement.points} pts</p>
+                      <p className="text-blue-600">Badge Earned</p>
                       <p className="text-xs text-gray-500">
-                        {new Date(achievement.unlockedAt!).toLocaleDateString()}
+                        {achievement.unlockedAt ? new Date(achievement.unlockedAt).toLocaleDateString() : ''}
                       </p>
                     </div>
                   </div>
                 );
               })}
+            {achievements.filter(a => a.unlocked).length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <Trophy className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>No achievements unlocked yet</p>
+                <p className="text-sm">Start participating to earn your first badge!</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

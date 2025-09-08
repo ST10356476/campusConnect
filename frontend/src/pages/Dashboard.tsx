@@ -9,7 +9,7 @@ interface User {
   avatar?: string;
   badge?: string;
   badges: string[];
-  points: number;
+  points?: number;  // Optional
 }
 
 interface DashboardProps {

@@ -12,6 +12,7 @@ const {
   getCommunityPosts
 } = require('../src/controllers/communityController');
 const { protect } = require('../src/middleware/auth');
+const { communityJoinedMiddleware } = require('../src/middleware/achievementMiddleware');
 
 const router = express.Router();
 
@@ -48,6 +49,7 @@ const communityValidation = [
 router.get('/', protect, getCommunities);
 router.post('/', protect, communityValidation, createCommunity);
 router.get('/:id', protect, getCommunityById);
+router.post('/:id/join', protect, communityJoinedMiddleware, joinCommunity);
 router.put('/:id', protect, updateCommunity);
 router.delete('/:id', protect, deleteCommunity);
 router.post('/:id/join', protect, joinCommunity);

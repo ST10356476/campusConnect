@@ -1,3 +1,15 @@
+
+import React, { useState } from 'react';
+import { Upload, FileText, Download, Eye, Sparkles, BookOpen, Brain, Target, Share2, Heart } from 'lucide-react';
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  badges: string[];
+  points?: number;  
+
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 

@@ -491,7 +491,7 @@ export default function StudyMaterials({ user }: StudyMaterialsProps) {
                   Select File (Max 100MB)
                 </label>
                 <div className="mb-2 text-xs text-gray-500">
-                  Supported formats: Word (DOC/DOCX), Text (TXT), Rich Text (RTF), Markdown (MD), OpenDocument (ODT), PDF
+                  Supported formats: Word (DOC/DOCX), Text (TXT), Rich Text (RTF), Markdown (MD), OpenDocument (ODT), PDF. [Please note AI generation for PDFs is not available yet.]
                 </div>
                 <input 
                   type="file" 

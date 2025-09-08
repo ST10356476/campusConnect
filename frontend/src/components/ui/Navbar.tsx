@@ -37,9 +37,9 @@ export function Navbar({ user, onLogout }: NavbarProps) {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-3 group">
             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-              <span className="text-white font-bold text-lg">SC</span>
+              <span className="text-white font-bold text-lg">CC</span>
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">CampusConnect</span>
+            <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Campus Connect</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -90,7 +90,6 @@ export function Navbar({ user, onLogout }: NavbarProps) {
                 </div>
                 <div className="hidden sm:block text-left">
                   <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                  <div className="text-xs text-purple-600 font-medium">🏆 {user.points} points</div>
                 </div>
               </button>
 

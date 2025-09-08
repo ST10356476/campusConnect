@@ -25,17 +25,38 @@ export interface User {
     year: number;
     skills?: string[];
     interests?: string[];
-    // added so profile edits persist
     location?: string;
     joinedDate?: string;
   };
-  points: number;
+  points: number; // Keep this for backward compatibility - will always be 0
   communities: string[];
   achievements: string[];
   isVerified: boolean;
   lastActive: string;
   name: string;
   badges: string[];
+}
+
+export interface Achievement {
+  _id: string;
+  name: string;
+  description: string;
+  icon: string;
+  badge: string;
+  criteria: {
+    type: string;
+    value: number;
+  };
+  rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+  unlocked: boolean;
+  unlockedAt?: string;
+  progress: number;
+}
+
+export interface AchievementStats {
+  unlockedCount: number;
+  totalCount: number;
+  completionRate: number;
 }
 
 export interface Community {
@@ -170,15 +191,32 @@ class ApiService {
   }
 
   async getProfile(): Promise<{ success: boolean; user: User }> {
-    return this.request('/auth/me');
+    const response = await this.request('/auth/me');
+    
+    // Ensure backward compatibility by adding points field if missing
+    if (response.success && response.user) {
+      response.user.points = response.user.points || 0;
+    }
+    
+    return response;
   }
 
-  // Profile update: flat fields like firstName, lastName, bio, interests, avatar, location, joinedDate
   async updateProfile(profileData: any) {
     return this.request('/auth/profile', {
       method: 'PUT',
       body: JSON.stringify(profileData),
     });
+  }
+
+  // Achievements
+  async getAchievements(): Promise<{ 
+    success: boolean; 
+    data: { 
+      achievements: Achievement[]; 
+      stats: AchievementStats;
+    }
+  }> {
+    return this.request('/achievements');
   }
 
   // Communities
@@ -194,7 +232,6 @@ class ApiService {
     });
   }
 
-  // Create community with image upload
   async createCommunityWithImage(formData: FormData) {
     const token = this.getToken();
     const response = await fetch(`${this.baseURL}/communities`, {
@@ -212,7 +249,6 @@ class ApiService {
     return data;
   }
 
-  // Update community with image upload
   async updateCommunityWithImage(communityId: string, formData: FormData) {
     const token = this.getToken();
     const response = await fetch(`${this.baseURL}/communities/${communityId}`, {
@@ -230,7 +266,6 @@ class ApiService {
     return data;
   }
 
-  // Upload community avatar separately
   async uploadCommunityAvatar(communityId: string, file: File) {
     const formData = new FormData();
     formData.append('avatar', file);
@@ -251,7 +286,6 @@ class ApiService {
     return data;
   }
 
-  // Delete community avatar
   async deleteCommunityAvatar(communityId: string) {
     return this.request(`/communities/${communityId}/avatar`, {
       method: 'DELETE',
@@ -299,7 +333,6 @@ class ApiService {
     });
   }
 
-  // Update community (regular update without image)
   async updateCommunity(communityId: string, updateData: any) {
     return this.request(`/communities/${communityId}`, {
       method: 'PUT',
@@ -307,7 +340,6 @@ class ApiService {
     });
   }
 
-  // Delete community
   async deleteCommunity(communityId: string) {
     return this.request(`/communities/${communityId}`, {
       method: 'DELETE',
@@ -333,7 +365,6 @@ class ApiService {
     });
   }
 
-  // Generic helper for file uploads
   async uploadFile(file: File, endpoint: string) {
     const formData = new FormData();
     formData.append('file', file);

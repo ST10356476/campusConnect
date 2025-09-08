@@ -16,6 +16,7 @@ const {
 } = require('../src/controllers/communityController');
 const { getCommunityPosts } = require('../src/controllers/postController');
 const { protect } = require('../src/middleware/auth');
+const { communityJoinedMiddleware } = require('../src/middleware/achievementMiddleware');
 
 const router = express.Router();
 
@@ -107,7 +108,7 @@ const handleMulterError = (error, req, res, next) => {
 router.get('/', protect, getCommunities);
 router.post('/', protect, upload.single('avatar'), handleMulterError, communityValidation, createCommunity);
 router.get('/:id', protect, getCommunityById);
-router.post('/:id/join', protect, joinCommunity);
+router.post('/:id/join', protect, communityJoinedMiddleware, joinCommunity);
 router.post('/:id/leave', protect, leaveCommunity);
 router.put('/:id', protect, upload.single('avatar'), handleMulterError, communityUpdateValidation, updateCommunity);
 router.delete('/:id', protect, deleteCommunity);

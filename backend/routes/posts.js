@@ -7,6 +7,11 @@ const {
   getPost
 } = require('../src/controllers/postController');
 const { protect } = require('../src/middleware/auth');
+const {
+  postCreatedMiddleware,
+  replyCreatedMiddleware,
+  likeMiddleware
+} = require('../src/middleware/achievementMiddleware');
 
 const router = express.Router();
 
@@ -36,10 +41,10 @@ const replyValidation = [
     .withMessage('Reply content must be between 1-2000 characters')
 ];
 
-// Post Routes
-router.post('/', protect, postValidation, createPost);
+// Post Routes with Achievement Tracking
+router.post('/', protect, postCreatedMiddleware, postValidation, createPost);
 router.get('/:id', protect, getPost);
-router.post('/:id/reply', protect, replyValidation, replyToPost);
-router.post('/:id/like', protect, toggleLikePost);
+router.post('/:id/reply', protect, replyCreatedMiddleware, replyValidation, replyToPost);
+router.post('/:id/like', protect, likeMiddleware, toggleLikePost);
 
 module.exports = router;

@@ -47,11 +47,9 @@ const UserSchema = new mongoose.Schema({
       type: String,
       maxlength: [500, 'Bio cannot exceed 500 characters']
     },
-
     // Added for the Profile screen
     location: { type: String, trim: true },
     joinedDate: { type: String }, // ISO string as used by the UI
-
     university: {
       type: String,
       required: [true, 'Please provide university name']
@@ -79,19 +77,39 @@ const UserSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Community'
   }],
+  // Updated achievement structure to match the achievement controller
   achievements: [{
-    achievement: {
+    achievementId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Achievement'
+      ref: 'Achievement',
+      required: true
     },
-    earnedAt: {
-      type: Date,
-      default: Date.now
+    unlocked: {
+      type: Boolean,
+      default: false
+    },
+    unlockedAt: {
+      type: Date
+    },
+    progress: {
+      type: Number,
+      default: 0
     }
   }],
+  // Keep points field for backward compatibility (always 0)
   points: {
     type: Number,
     default: 0
+  },
+  // Activity tracking for achievements
+  stats: {
+    postsCreated: { type: Number, default: 0 },
+    likesReceived: { type: Number, default: 0 },
+    communitiesJoined: { type: Number, default: 0 },
+    repliesPosted: { type: Number, default: 0 },
+    meetupsAttended: { type: Number, default: 0 },
+    meetupsHosted: { type: Number, default: 0 },
+    materialsUploaded: { type: Number, default: 0 }
   },
   isVerified: {
     type: Boolean,
@@ -125,4 +143,10 @@ UserSchema.virtual('profile.fullName').get(function() {
   return `${this.profile.firstName} ${this.profile.lastName}`;
 });
 
-module.exports = mongoose.model('User', UserSchema);
+// Add virtual for badges (for backward compatibility)
+UserSchema.virtual('badges').get(function() {
+  return this.achievements.filter(a => a.unlocked).map(a => a.achievementId);
+});
+
+// Prevent model overwrite error
+module.exports = mongoose.models.User || mongoose.model('User', UserSchema);

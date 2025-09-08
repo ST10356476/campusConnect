@@ -1,4 +1,3 @@
-// frontend/src/App.tsx
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Navbar } from './components/ui/Navbar';
@@ -315,7 +314,6 @@ function App() {
                 <Route path="/meetups" element={<Meetups user={user} />} />
                 <Route path="/achievements" element={<Achievements user={user} />} />
                 <Route path="/profile" element={<Profile user={user} setUser={setUser} />} />
-                <Route path="/live/:sessionId" element={<LiveSession user={user} />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </main>

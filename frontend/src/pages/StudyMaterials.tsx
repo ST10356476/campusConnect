@@ -7,7 +7,7 @@ interface User {
   email: string;
   avatar?: string;
   badges: string[];
-  points: number;
+  points?: number;  
 }
 
 interface StudyMaterialsProps {

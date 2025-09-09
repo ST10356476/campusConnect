@@ -19,7 +19,7 @@ interface MeetupsProps {
 
 }
 
-const API_BASE_URL = 'http://localhost:5000/api';
+import { API_BASE_URL } from '../services/api';
 
 // normalize current user into id+name
 function getOrganizer(u: any): { id: string | null; name: string | null } {

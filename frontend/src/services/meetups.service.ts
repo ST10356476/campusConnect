@@ -1,6 +1,6 @@
 import { Meetup, CreateMeetupData, JoinMeetupData, ApiResponse } from '../types/meetup.types';
 
-const API_BASE_URL = 'http://localhost:5000/api'; // Change this to your backend URL
+import { API_BASE_URL } from './api';
 
 class MeetupService {
   // Create a new meetup

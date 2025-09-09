@@ -45,7 +45,7 @@ const CommunitySchema = new mongoose.Schema({
   maxMembers: {
     type: Number,
     default: 50,
-    max: [500, 'Maximum members cannot exceed 500']
+    max: [3000, 'Maximum members cannot exceed 3000']
   },
   creator: {
     type: mongoose.Schema.Types.ObjectId,

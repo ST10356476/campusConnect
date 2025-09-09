@@ -4,16 +4,18 @@ import { Navbar } from './components/ui/Navbar';
 import { AuthModal } from './components/auth/AuthModal';
 import { Dashboard } from './pages/Dashboard';
 import Communities from './pages/Communities';
-import StudyMaterials from './pages/StudyMaterials'
-;import { Profile } from './pages/Profile';
+import StudyMaterials from './pages/StudyMaterials';
+import StudyMaterialDetail from './pages/StudyMaterialDetail';
+import { Profile } from './pages/Profile';
 import { Meetups } from './pages/Meetups';
 import { Achievements } from './components/profile/Achievements';
+import SearchResults from './pages/SearchResults';
 import { LiveSession } from './components/live-session/LiveSession';
 import { apiService, User } from './services/api';
 import { webSocketService } from './services/websocket.service';
 import { CommunityDetail } from './pages/CommunityDetail';
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -22,7 +24,7 @@ interface AuthContextType {
   updateUser: (userData: Partial<User>) => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -311,9 +313,11 @@ function App() {
                 <Route path="/communities" element={<Communities user={user} />} />
                 <Route path="/communities/:communityId" element={<CommunityDetail user={user} />} />
                 <Route path="/materials" element={<StudyMaterials user={user} />} />
+                <Route path="/study-materials/:id" element={<StudyMaterialDetail />} />
                 <Route path="/meetups" element={<Meetups user={user} />} />
                 <Route path="/achievements" element={<Achievements user={user} />} />
                 <Route path="/profile" element={<Profile user={user} setUser={setUser} />} />
+                <Route path="/search" element={<SearchResults />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </main>

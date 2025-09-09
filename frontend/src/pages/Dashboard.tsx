@@ -8,7 +8,16 @@ import {
   AlertDialogAction,
   AlertDialogCancel
 } from '../components/ui/alert-dialog';
-  // Welcome modal state
+import { Link } from 'react-router-dom';
+import { MessageSquare, Calendar, FileText, Zap, Rocket, TrendingUp, Sparkles } from 'lucide-react';
+import { apiService, User as ApiUser, Meetup, CommunityPost, Achievement } from '../services/api';
+
+interface DashboardProps {
+  user: ApiUser;
+}
+
+export function Dashboard({ user }: DashboardProps) {
+  // Welcome modal state (must be inside component)
   const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
@@ -21,15 +30,7 @@ import {
       }
     }
   }, []);
-import { Link } from 'react-router-dom';
-import { MessageSquare, Calendar, FileText, Zap, Rocket, TrendingUp, Sparkles } from 'lucide-react';
-import { apiService, User as ApiUser, Meetup, CommunityPost, Achievement } from '../services/api';
 
-interface DashboardProps {
-  user: ApiUser;
-}
-
-export function Dashboard({ user }: DashboardProps) {
   const [recentMeetups, setRecentMeetups] = useState<Meetup[]>([]);
   const [recentPosts, setRecentPosts] = useState<CommunityPost[]>([]);
   const [recentAchievements, setRecentAchievements] = useState<Achievement[]>([]);
@@ -225,7 +226,7 @@ export function Dashboard({ user }: DashboardProps) {
                     }
                     return (
                       <div 
-                        key={activity.id} 
+                        key={activity.id || index} 
                         className="flex items-start space-x-4 p-4 bg-gradient-to-r from-white to-gray-50 rounded-xl transition-all duration-300 hover:shadow-md hover:border-purple-200/50 border border-transparent transform hover:-translate-y-0.5"
                         style={{ transitionDelay: `${index * 100}ms` }}
                       >
@@ -253,7 +254,7 @@ export function Dashboard({ user }: DashboardProps) {
                     const unlockedTime = activity.unlockedAt ? new Date(activity.unlockedAt).toLocaleString() : '';
                     return (
                       <div 
-                        key={activity._id} 
+                        key={activity._id || index} 
                         className="flex items-start space-x-4 p-4 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl transition-all duration-300 hover:shadow-md border border-yellow-100/50 transform hover:-translate-y-0.5"
                         style={{ transitionDelay: `${index * 100}ms` }}
                       >
@@ -317,7 +318,7 @@ export function Dashboard({ user }: DashboardProps) {
                 }
                 return (
                   <div 
-                    key={meetup.id} 
+                    key={meetup.id || index} 
                     className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 border border-blue-100/50 rounded-2xl transition-all duration-300 hover:shadow-md hover:border-blue-200/50 transform hover:-translate-y-0.5"
                     style={{ transitionDelay: `${index * 100}ms` }}
                   >
@@ -393,7 +394,7 @@ export function Dashboard({ user }: DashboardProps) {
                 }
               ].map((action, index) => (
                 <Link
-                  key={index}
+                  key={action.label || index}
                   to={action.to}
                   className={`flex items-center p-4 bg-gradient-to-r ${action.bgColor} rounded-2xl hover:${action.hoverColor} transition-all duration-300 group hover:shadow-md transform hover:scale-[1.02] border border-transparent hover:border-white/30`}
                   style={{ transitionDelay: `${index * 100}ms` }}

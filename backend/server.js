@@ -11,6 +11,8 @@ require('dotenv').config();
 const studyMaterialRoutes = require('./routes/studyMaterial');
 
 const app = express();
+// Enable trust proxy for correct client IP detection behind a proxy (e.g., Render, Vercel)
+app.set('trust proxy', 1);
 const server = createServer(app);
 const io = new Server(server, {
   cors: {

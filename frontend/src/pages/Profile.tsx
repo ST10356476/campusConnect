@@ -151,26 +151,85 @@ export function Profile({ user, setUser }: ProfileProps) {
   }
 
 
-  const stats = [
-    { label: 'Questions Asked', value: 12, icon: BookOpen },
-    { label: 'Communities Joined', value: 5, icon: Users },
-    { label: 'Meetups Attended', value: 8, icon: Calendar },
+
+  // Stats, achievements, and activity state
+  const [stats, setStats] = useState([
+    { label: 'Questions Asked', value: 0, icon: BookOpen },
+    { label: 'Communities Joined', value: 0, icon: Users },
+    { label: 'Meetups Attended', value: 0, icon: Calendar },
     { label: 'Achievement Points', value: displayPoints, icon: Award },
-  ];
+  ]);
+  const [achievements, setAchievements] = useState<any[]>([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
 
-  const achievements = [
-    { id: 1, name: 'First Question', icon: '🎯', color: 'bg-blue-100 text-blue-700' },
-    { id: 2, name: 'Helpful Member', icon: '⭐', color: 'bg-yellow-100 text-yellow-700' },
-    { id: 3, name: 'Early Bird', icon: '🌅', color: 'bg-orange-100 text-orange-700' },
-    { id: 4, name: 'Study Buddy', icon: '👥', color: 'bg-green-100 text-green-700' },
-  ];
+  useEffect(() => {
+    // Set stats from user.stats if available
+    if (user && (user as any).stats) {
+      setStats([
+        { label: 'Questions Asked', value: (user as any).stats.postsCreated || 0, icon: BookOpen },
+        { label: 'Communities Joined', value: (user as any).stats.communitiesJoined || (user.communities?.length || 0), icon: Users },
+        { label: 'Meetups Attended', value: (user as any).stats.meetupsAttended || 0, icon: Calendar },
+        { label: 'Achievement Points', value: (user as any).points || 0, icon: Award },
+      ]);
+    }
 
-  const recentActivity = [
-    { id: 1, type: 'question', content: 'Asked: "How to optimize React rendering performance?"', community: 'React Developers', time: '2 hours ago' },
-    { id: 2, type: 'meetup', content: 'Attended: Algorithm Study Group', community: 'Computer Science', time: '1 day ago' },
-    { id: 3, type: 'material', content: 'Shared: Data Structures Cheat Sheet', community: 'Computer Science', time: '3 days ago' },
-    { id: 4, type: 'achievement', content: 'Earned: Helpful Member badge', community: 'Achievement', time: '1 week ago' },
-  ];
+    // Fetch achievements
+    const fetchAchievements = async () => {
+      try {
+        const res = await apiService.getAchievements();
+        if (res.success && res.data && Array.isArray(res.data.achievements)) {
+          setAchievements(res.data.achievements.filter((a: any) => a.unlocked));
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    fetchAchievements();
+
+    // Fetch recent activity: posts and meetups
+    const fetchActivity = async () => {
+      let activities: any[] = [];
+      // Posts from user's communities
+      if (user && user.communities && Array.isArray(user.communities)) {
+        for (const c of user.communities as (string | { id?: string; _id?: string })[]) {
+          const communityId = typeof c === 'string' ? c : c?.id || c?._id;
+          if (!communityId) continue;
+          try {
+            const postsRes = await apiService.getCommunityPosts(communityId, { limit: 2, sortBy: 'createdAt:desc' });
+            if (postsRes && postsRes.success && Array.isArray(postsRes.posts)) {
+              activities = activities.concat(postsRes.posts.map((p: any) => ({
+                id: p.id,
+                type: 'question',
+                content: `Asked: "${p.title}"`,
+                community: (p.community && p.community.name) || '',
+                time: new Date(p.createdAt).toLocaleString(),
+              })));
+            }
+          } catch {}
+        }
+      }
+      // Meetups attended (if available)
+      if (user && user.id) {
+        try {
+          // getMeetups does not support filtering by user; fetch and filter client-side
+          const meetupsRes = await apiService.getMeetups({ limit: 10, sortBy: 'dateTime.start:desc' });
+          if (meetupsRes && meetupsRes.success && Array.isArray(meetupsRes.meetups)) {
+            activities = activities.concat(meetupsRes.meetups.map((m: any) => ({
+              id: m.id,
+              type: 'meetup',
+              content: `Attended: ${m.title}`,
+              community: (m.community && m.community.name) || '',
+              time: m.dateTime && m.dateTime.start ? new Date(m.dateTime.start).toLocaleString() : '',
+            })));
+          }
+        } catch {}
+      }
+      // Sort by time desc
+      activities.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+      setRecentActivity(activities.slice(0, 5));
+    };
+    fetchActivity();
+  }, [user]);
 
   const effectiveAvatar = editForm.avatar || displayAvatar;
 
@@ -360,37 +419,24 @@ export function Profile({ user, setUser }: ProfileProps) {
           )}
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Icon className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl text-gray-900">{stat.value}</p>
-                    <p className="text-sm text-gray-600">{stat.label}</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
         {/* Achievements */}
         <div className="lg:col-span-1 bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <h2 className="text-xl text-gray-900 mb-4">Achievements</h2>
           <div className="space-y-4">
+            {achievements.length === 0 && (
+              <div className="text-gray-400 text-sm">No achievements unlocked yet.</div>
+            )}
             {achievements.map((achievement) => (
-              <div key={achievement.id} className="flex items-center space-x-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${achievement.color}`}>
-                  <span className="text-lg">{achievement.icon}</span>
+              <div key={achievement._id || achievement.id} className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-blue-100 text-blue-700">
+                  <span className="text-lg">{ '🏆'}</span>
                 </div>
                 <div>
                   <p className="text-sm text-gray-900">{achievement.name}</p>
+                  <p className="text-xs text-gray-500">{achievement.description}</p>
+                  {achievement.unlockedAt && (
+                    <p className="text-xs text-green-600">Unlocked {new Date(achievement.unlockedAt).toLocaleDateString()}</p>
+                  )}
                 </div>
               </div>
             ))}
@@ -401,8 +447,14 @@ export function Profile({ user, setUser }: ProfileProps) {
         <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h2 className="text-xl text-gray-900 mb-4">Recent Activity</h2>
           <div className="space-y-4">
+            {recentActivity.length === 0 && (
+              <div className="text-gray-400 text-sm">No recent activity found.</div>
+            )}
             {recentActivity.map((activity) => {
-              const Icon = activity.type === 'achievement' ? Award : BookOpen;
+              // Use icons based on type
+              let Icon = BookOpen;
+              if (activity.type === 'meetup') Icon = Calendar;
+              if (activity.type === 'achievement') Icon = Award;
               return (
                 <div key={activity.id} className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
                   <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">

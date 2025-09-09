@@ -14,8 +14,8 @@ const router = express.Router();
 const registerValidation = [
   body('username')
     .trim()
-    .isLength({ min: 3, max: 20 })
-    .withMessage('Username must be between 3-20 characters')
+    .isLength({ min: 3, max: 250 })
+    .withMessage('Username must be between 3-250 characters')
     .matches(/^[a-zA-Z0-9_]+$/)
     .withMessage('Username can only contain letters, numbers, and underscores'),
   body('email')
@@ -23,8 +23,8 @@ const registerValidation = [
     .normalizeEmail()
     .withMessage('Please provide a valid email'),
   body('password')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters long'),
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long'),
   body('firstName')
     .trim()
     .notEmpty()
@@ -42,8 +42,8 @@ const registerValidation = [
     .notEmpty()
     .withMessage('Course is required'),
   body('year')
-    .isInt({ min: 1, max: 8 })
-    .withMessage('Year must be between 1 and 8')
+    .isInt({ min: 1, max: 6 })
+    .withMessage('Year must be between 1 and 6')
 ];
 
 const loginValidation = [

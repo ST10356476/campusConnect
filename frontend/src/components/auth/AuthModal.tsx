@@ -265,10 +265,7 @@ export function AuthModal({ isLogin, onClose, onLogin, onSignup, onToggleMode, e
                       <option value={2}>2nd Year</option>
                       <option value={3}>3rd Year</option>
                       <option value={4}>4th Year</option>
-                      <option value={5}>5th Year</option>
-                      <option value={6}>6th Year</option>
-                      <option value={7}>7th Year</option>
-                      <option value={8}>8th Year+</option>
+                      <option value={5}>Postgraduate</option>
                     </select>
                   </div>
                 </div>

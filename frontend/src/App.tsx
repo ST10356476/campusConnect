@@ -167,7 +167,7 @@ function App() {
                 </div>
                 
                 <h1 className="text-6xl lg:text-7xl mb-6 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent">
-                  CampusConnect
+                  Campus Connect
                 </h1>
                 <p className="text-xl lg:text-2xl text-gray-700 mb-12 leading-relaxed max-w-3xl mx-auto">
                   Level up your learning with <span className="font-semibold text-purple-600">AI-powered tools</span>, 

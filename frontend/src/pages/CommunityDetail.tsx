@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import * as Avatar from '@radix-ui/react-avatar';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -50,7 +51,6 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
   useEffect(() => {
     if (communityId) {
       fetchCommunityDetails();
-      fetchCommunityPosts();
     }
   }, [communityId]);
 
@@ -58,7 +58,7 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
     if (communityId) {
       fetchCommunityPosts();
     }
-  }, [searchTerm, filterType, sortBy]);
+  }, [communityId, searchTerm, filterType, sortBy]);
 
   const fetchCommunityDetails = async () => {
     try {
@@ -105,7 +105,8 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
       if (response.success) {
         setShowCreatePost(false);
         setPostForm({ title: '', content: '', type: 'discussion', tags: '' });
-        await fetchCommunityPosts();
+        // Only update posts state directly to avoid double-fetch
+        setPosts(prev => [response.post, ...prev]);
       }
     } catch (error: any) {
       console.error('Failed to create post:', error);
@@ -244,7 +245,7 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+  <div className="container mx-auto px-4 py-8 min-w-0 overflow-x-hidden">
       {/* Header */}
       <div className="mb-8">
         <button
@@ -255,18 +256,28 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
           <span>Back to Communities</span>
         </button>
 
-        <div className="bg-white/60 backdrop-blur-sm rounded-3xl shadow-lg border border-white/50 p-8">
-          <div className="flex items-start space-x-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center text-4xl">
-              {community.avatar ? (
-                <img src={community.avatar} alt={community.name} className="w-full h-full rounded-2xl object-cover" />
-              ) : (
-                '👥'
-              )}
+        <div className="bg-white/60 backdrop-blur-sm rounded-3xl shadow-lg border border-white/50 p-8 min-w-0">
+          <div className="flex flex-col md:flex-row items-start md:space-x-6 min-w-0 w-full">
+            <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center text-3xl min-w-0">
+              <Avatar.Root className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center text-3xl min-w-0">
+                <Avatar.Image
+                  src={community && community.avatar ? community.avatar : undefined}
+                  alt={community && community.name ? community.name : 'Community'}
+                  className="w-full h-full rounded-2xl object-cover"
+                />
+                <Avatar.Fallback
+                  delayMs={100}
+                  className="block w-full h-full flex items-center justify-center font-bold text-purple-600"
+                >
+                  {community && community.name && typeof community.name === 'string' && community.name.trim().length > 0
+                    ? community.name.trim().split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
+                    : 'CC'}
+                </Avatar.Fallback>
+              </Avatar.Root>
             </div>
             
-            <div className="flex-1">
-              <div className="flex items-center space-x-3 mb-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-2 min-w-0">
                 <h1 className="text-3xl font-bold text-gray-900">{community.name}</h1>
                 <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium">
                   {community.category}
@@ -275,7 +286,7 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
               
               <p className="text-gray-700 mb-4 leading-relaxed">{community.description}</p>
               
-              <div className="flex items-center space-x-6 text-sm text-gray-600">
+              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 min-w-0">
                 <div className="flex items-center space-x-2">
                   <Users className="w-4 h-4" />
                   <span>{community.memberCount} members</span>
@@ -315,7 +326,7 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
       ) : (
         <>
           {/* Filters and Search */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 mb-8">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 mb-8 min-w-0">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input

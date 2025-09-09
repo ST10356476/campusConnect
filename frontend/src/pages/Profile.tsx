@@ -124,8 +124,14 @@ export function Profile({ user, setUser }: ProfileProps) {
         setUser(res.user);
         setIsEditing(false);
       }
-    } catch (e) {
-      console.error('Update failed:', e);
+    } catch (e: any) {
+      if (e.response && e.response.data && e.response.data.errors) {
+        alert(e.response.data.errors.map((err: any) => err.msg).join('\n'));
+      } else if (e.response && e.response.data && e.response.data.message) {
+        alert(e.response.data.message);
+      } else {
+        alert(e.message || 'Failed to update profile');
+      }
     }
   };
 
@@ -237,8 +243,8 @@ export function Profile({ user, setUser }: ProfileProps) {
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
         {/* Profile Header */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-8">
-          <div className="flex flex-col md:flex-row items-start md:items-center space-y-6 md:space-y-0 md:space-x-8">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 md:p-8 mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-6 sm:space-y-0 sm:space-x-8 w-full">
             <div className="relative">
               <img
                 src={effectiveAvatar}

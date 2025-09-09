@@ -243,6 +243,28 @@ export function Navbar({ user, onLogout }: NavbarProps) {
                 </Link>
               ))}
             </div>
+            <div className="border-t border-gray-100 py-2">
+              <Link
+                to="/profile"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 rounded-xl"
+              >
+                My Profile
+              </Link>
+              <Link
+                to="/achievements"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 rounded-xl"
+              >
+                My Achievements
+              </Link>
+              <button
+                onClick={() => { setIsMobileMenuOpen(false); onLogout(); }}
+                className="block w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-red-50 rounded-xl mt-2"
+              >
+                Sign Out
+              </button>
+            </div>
           </div>
         )}
       </div>

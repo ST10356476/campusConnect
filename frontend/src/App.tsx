@@ -174,7 +174,36 @@ function App() {
                   connect with study buddies, and turn knowledge into achievements! 🎓✨
                 </p>
               </div>
-              
+
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+                <button
+                  onClick={() => {
+                    setIsLogin(false);
+                    setShowAuthModal(true);
+                    setError('');
+                  }}
+                  className="group relative bg-gradient-to-r from-purple-600 to-pink-600 text-white px-10 py-4 rounded-2xl font-semibold text-lg hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300 shadow-xl"
+                >
+                  <span className="flex items-center justify-center">
+                    🌟 Start Your Journey
+                  </span>
+                  <div className="absolute inset-0 bg-white/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsLogin(true);
+                    setShowAuthModal(true);
+                    setError('');
+                  }}
+                  className="group bg-white/80 backdrop-blur-sm text-purple-700 px-10 py-4 rounded-2xl font-semibold text-lg border-2 border-purple-200 hover:bg-white hover:border-purple-300 transform hover:scale-105 transition-all duration-300 shadow-lg"
+                >
+                  <span className="flex items-center justify-center">
+                    👋 Welcome Back
+                  </span>
+                </button>
+              </div>
+
               {/* Feature Cards */}
               <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
                 <div className="group bg-white/80 backdrop-blur-sm p-8 rounded-3xl shadow-xl border border-white/50 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
@@ -232,34 +261,6 @@ function App() {
                 </div>
               </div>
               
-              {/* CTA Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <button
-                  onClick={() => {
-                    setIsLogin(false);
-                    setShowAuthModal(true);
-                    setError('');
-                  }}
-                  className="group relative bg-gradient-to-r from-purple-600 to-pink-600 text-white px-10 py-4 rounded-2xl font-semibold text-lg hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300 shadow-xl"
-                >
-                  <span className="flex items-center justify-center">
-                    🌟 Start Your Journey
-                  </span>
-                  <div className="absolute inset-0 bg-white/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                </button>
-                <button
-                  onClick={() => {
-                    setIsLogin(true);
-                    setShowAuthModal(true);
-                    setError('');
-                  }}
-                  className="group bg-white/80 backdrop-blur-sm text-purple-700 px-10 py-4 rounded-2xl font-semibold text-lg border-2 border-purple-200 hover:bg-white hover:border-purple-300 transform hover:scale-105 transition-all duration-300 shadow-lg"
-                >
-                  <span className="flex items-center justify-center">
-                    👋 Welcome Back
-                  </span>
-                </button>
-              </div>
 
               {/* Error Message */}
               {error && (

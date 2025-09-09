@@ -118,12 +118,12 @@ export default function SearchResults() {
   }, [query]);
 
   if (!user) return null;
-  if (!query) return <><Navbar user={user} onLogout={onLogout} /><div className="p-6 mt-20">Type something to search.</div></>;
+  if (!query) return <><Navbar user={user} onLogout={onLogout} /><div className="p-6 mt-20 min-w-0 overflow-x-auto">Type something to search.</div></>;
 
   if (loading) return (
     <>
       <Navbar user={user} onLogout={onLogout} />
-      <div className="min-h-screen pt-24 flex items-center justify-center">
+      <div className="min-h-screen pt-24 flex items-center justify-center min-w-0 overflow-x-auto">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Searching for "{query}"...</p>

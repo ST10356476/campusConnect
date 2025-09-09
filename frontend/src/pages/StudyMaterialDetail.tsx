@@ -42,7 +42,7 @@ const StudyMaterialDetail: React.FC = () => {
   if (!material) return <div className="p-8">Material not found.</div>;
 
   return (
-    <div className="max-w-2xl mx-auto p-8 bg-white rounded-xl shadow-lg mt-10">
+    <div className="max-w-2xl mx-auto p-8 bg-white rounded-xl shadow-lg mt-10 min-w-0 overflow-x-auto">
       <Link to="/materials" className="text-purple-600 hover:underline">&larr; Back to Materials</Link>
       <h1 className="text-2xl font-bold mt-4 mb-2">{material.originalName}</h1>
       <p className="text-gray-600 mb-2">Type: {material.fileType}</p>

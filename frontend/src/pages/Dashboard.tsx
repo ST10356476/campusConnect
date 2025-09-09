@@ -143,7 +143,7 @@ export function Dashboard({ user }: DashboardProps) {
 
   return (
     <>
-  <div className="container mx-auto px-4 py-8">
+  <div className="container mx-auto px-4 py-8 min-w-0 overflow-x-auto">
       {/* Welcome Header with enhanced animation */}
       <div className={`mb-10 transform transition-all duration-700 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
         <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-8 text-white shadow-lg hover:shadow-xl transition-all duration-500 hover:-translate-y-1 relative overflow-hidden">
@@ -173,9 +173,9 @@ export function Dashboard({ user }: DashboardProps) {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-8">
+  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 min-w-0">
         {/* Main Content: Recent Activity + Upcoming Meetups */}
-        <div className="lg:col-span-2 space-y-8">
+  <div className="lg:col-span-2 space-y-8 min-w-0">
           {/* Recent Activity with enhanced animations */}
           <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-white/50 shadow-lg p-6 transform transition-all duration-500 hover:shadow-xl hover:-translate-y-1">
             <div className="flex items-center justify-between mb-6">

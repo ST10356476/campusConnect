@@ -261,17 +261,32 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
             <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center text-3xl min-w-0">
               <Avatar.Root className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center text-3xl min-w-0">
                 <Avatar.Image
-                  src={community && community.avatar ? community.avatar : undefined}
+                  src={
+                    community && community.avatar
+                      ? (typeof community.avatar === 'object' && community.avatar !== null && 'url' in community.avatar && (community.avatar as any).url
+                          ? (community.avatar as any).url
+                          : typeof community.avatar === 'string'
+                            ? community.avatar
+                            : undefined)
+                      : undefined
+                  }
                   alt={community && community.name ? community.name : 'Community'}
                   className="w-full h-full rounded-2xl object-cover"
+                  onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
                 <Avatar.Fallback
                   delayMs={100}
                   className="block w-full h-full flex items-center justify-center font-bold text-purple-600"
                 >
-                  {community && community.name && typeof community.name === 'string' && community.name.trim().length > 0
-                    ? community.name.trim().split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
-                    : 'CC'}
+                  {(() => {
+                    if (community && typeof community.name === 'string') {
+                      const trimmed = community.name.trim();
+                      if (trimmed.length === 0) return 'CC';
+                      const initials = trimmed.split(/\s+/).map(w => w[0]).join('').substring(0, 2).toUpperCase();
+                      return initials || 'CC';
+                    }
+                    return 'CC';
+                  })()}
                 </Avatar.Fallback>
               </Avatar.Root>
             </div>

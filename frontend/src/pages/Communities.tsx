@@ -196,9 +196,13 @@ export default function Communities({ user }: CommunitiesProps) {
   };
 
   const isCreator = (community: Community) => {
-    const creatorId = typeof community.creator === 'string' 
-      ? community.creator 
-      : community.creator._id;
+    if (!community || !community.creator || !user) return false;
+    let creatorId: string | undefined = undefined;
+    if (typeof community.creator === 'string') {
+      creatorId = community.creator;
+    } else if (typeof community.creator === 'object' && community.creator !== null) {
+      creatorId = (community.creator as any)._id || (community.creator as any).id;
+    }
     return creatorId === user.id || creatorId === user._id;
   };
 
@@ -285,18 +289,31 @@ export default function Communities({ user }: CommunitiesProps) {
               <div className="flex items-start justify-between mb-6">
                 <div className="flex items-center space-x-4">
                   <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform overflow-hidden">
-                    {community.avatar?.url || typeof community.avatar === 'string' ? (
+                    {typeof community.avatar === 'object' && community.avatar !== null && 'url' in community.avatar && (community.avatar as any).url ? (
                       <img
-                        src={community.avatar?.url || community.avatar}
+                        src={(community.avatar as any).url}
+                        alt={community.name}
+                        className="w-full h-full rounded-2xl object-cover"
+                        onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    ) : typeof community.avatar === 'string' && community.avatar ? (
+                      <img
+                        src={community.avatar}
                         alt={community.name}
                         className="w-full h-full rounded-2xl object-cover"
                         onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                       />
                     ) : (
                       <span className="font-bold text-purple-600">
-                        {community.name && typeof community.name === 'string' && community.name.trim().length > 0
-                          ? community.name.trim().split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
-                          : 'CC'}
+                        {(() => {
+                          if (typeof community.name === 'string') {
+                            const trimmed = community.name.trim();
+                            if (trimmed.length === 0) return 'CC';
+                            const initials = trimmed.split(/\s+/).map(w => w[0]).join('').substring(0, 2).toUpperCase();
+                            return initials || 'CC';
+                          }
+                          return 'CC';
+                        })()}
                       </span>
                     )}
                   </div>

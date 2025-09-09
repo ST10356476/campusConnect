@@ -381,36 +381,7 @@ npm run test
    - Configure CORS properly in backend
    - Ensure frontend and backend URLs match environment variables
 
-## 🏆 Hackathon Requirements
 
-✅ **Completed Features:**
-- Web-based platform ✓
-- User registration and authentication ✓
-- Community system ✓
-- Study materials sharing ✓
-- Real-time collaboration ✓
-- Responsive design ✓
-- GitHub repository ✓
-
-🚧 **In Progress:**
-- Live deployment
-- Advanced search functionality
-- Mobile optimization
-- Performance improvements
-
-## 📊 Project Statistics
-
-- **Frontend**: ~50 React components
-- **Backend**: 25+ API endpoints
-- **Database**: 6 main collections/schemas
-- **Features**: 8 major feature areas
-- **Tech Stack**: 15+ technologies integrated
-
-## 📞 Support & Contact
-
-- **Project Issues**: [GitHub Issues](https://github.com/yourusername/campus-connect/issues)
-- **Documentation**: This README and inline code comments
-- **Development Chat**: Available in project Discord/Slack
 
 ## 📄 License
 

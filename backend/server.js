@@ -17,6 +17,7 @@ const io = new Server(server, {
     origin: [
       "http://localhost:5173",
       "http://localhost:3000",
+      "https://campus-connect-klsr.vercel.app",
       process.env.FRONTEND_URL
     ].filter(Boolean),
     methods: ["GET", "POST"]
@@ -55,7 +56,7 @@ app.use(cors({
   origin: [
     "http://localhost:5173",
     "http://localhost:3000",
-    "https://campusconnect-an8j.onrender.com",
+    "https://campus-connect-klsr.vercel.app",
     process.env.FRONTEND_URL
   ].filter(Boolean),
   credentials: true

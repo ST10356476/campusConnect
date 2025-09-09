@@ -109,11 +109,14 @@ app.get('/health', (req, res) => {
 
 // Test route
 
-app.use('/api/test', (req, res) => {
+app.get('/api/test', (req, res) => {
   res.json({ message: 'Backend is working!', timestamp: new Date().toISOString() });
 });
 
-
+// 404 handler (must be last route handler before error handler)
+app.use('*', (req, res) => {
+  res.status(404).json({ message: 'Backend Live' });
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {

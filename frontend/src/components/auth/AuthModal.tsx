@@ -84,8 +84,8 @@ export function AuthModal({ isLogin, onClose, onLogin, onSignup, onToggleMode, e
   const displayError = error || localError;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4" style={{ minHeight: '100vh' }}>
-      <div className="bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 w-full max-w-sm h-full sm:h-auto overflow-y-auto flex flex-col">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+  <div className="bg-white/95 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 w-full max-w-md mx-2 my-12 p-0 flex flex-col overflow-y-auto" style={{ minHeight: '0', maxHeight: '100dvh', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.15)' }}>
         <div className="sticky top-0 bg-white/95 backdrop-blur-lg p-4 pb-3 border-b border-gray-200/50 rounded-t-2xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">

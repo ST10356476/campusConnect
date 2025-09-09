@@ -673,34 +673,58 @@ class ApiService {
   }
 
   // Meetup methods
-  async getMeetups(params?: {
-    type?: string;
-    status?: string;
-    community?: string;
-    search?: string;
-    page?: number;
-    limit?: number;
-    sortBy?: string;
-  }): Promise<{
-    success: boolean;
-    meetups: Meetup[];
-    pagination: any;
-  }> {
-    const queryParams = new URLSearchParams();
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          queryParams.append(key, String(value));
-        }
-      });
-    }
-    
-    const queryString = queryParams.toString();
-    const endpoint = queryString ? `/meetups?${queryString}` : '/meetups';
-    
-    return this.request(endpoint);
+async getMeetups(params?: {
+  type?: string;
+  status?: string;
+  community?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+}): Promise<{
+  success: boolean;
+  meetups: Meetup[];
+  count?: number;
+  pagination?: any;
+}> {
+  const queryParams = new URLSearchParams();
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, String(value));
+      }
+    });
   }
-
+  
+  const queryString = queryParams.toString();
+  const endpoint = queryString ? `/meetups?${queryString}` : '/meetups';
+  
+  const response = await this.request(endpoint);
+  
+  // Handle your backend's actual response format: { success: true, count: number, data: Meetup[] }
+  if (response && response.success && Array.isArray(response.data)) {
+    return {
+      success: response.success,
+      meetups: response.data,
+      count: response.count,
+      pagination: null
+    };
+  } else if (Array.isArray(response)) {
+    // Fallback for direct array
+    return {
+      success: true,
+      meetups: response,
+      pagination: null
+    };
+  } else {
+    // Error case
+    return {
+      success: false,
+      meetups: [],
+      pagination: null
+    };
+  }
+}
   async createMeetup(meetupData: {
     title: string;
     description: string;

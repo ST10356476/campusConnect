@@ -79,28 +79,55 @@ export function Dashboard({ user }: DashboardProps) {
     { label: 'Achievement Points', value: user.points, icon: Award, color: 'yellow' }
   ];
 
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: "spring",
+        stiffness: 100
+      }
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Welcome Header */}
-      <div className="mb-10">
-        <div className="bg-white/60 backdrop-blur-sm rounded-3xl p-8 border border-white/50 shadow-lg">
-          <div className="flex items-center space-x-4 mb-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center">
-              <span className="text-2xl">👋</span>
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Hey {user.name}! 🌟
-              </h1>
-              <p className="text-gray-600 text-lg">Ready to level up your learning game today?</p>
-            </div>
+      {/* Welcome Header with enhanced animation */}
+      <div className={`mb-10 transform transition-all duration-700 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-8 text-white shadow-lg hover:shadow-xl transition-all duration-500 hover:-translate-y-1 relative overflow-hidden">
+          {/* Animated background elements */}
+          <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
+            <div className="absolute -top-4 -left-4 w-24 h-24 bg-white/10 rounded-full animate-pulse"></div>
+            <div className="absolute -bottom-4 -right-4 w-32 h-32 bg-white/5 rounded-full"></div>
+            <div className="absolute top-1/2 right-1/4 w-16 h-16 bg-white/8 rounded-full animate-bounce" style={{ animationDelay: '1s' }}></div>
           </div>
           
-          {/* Progress Bar */}
-          <div className="bg-white/80 rounded-2xl p-4 border border-white/30">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">Your Learning Progress</span>
-              <span className="text-sm font-bold text-purple-600">Level 3 🎯</span>
+          <div className="flex items-center space-x-4 mb-4 relative z-10">
+            <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform duration-300">
+              <span className="text-2xl animate-bounce" style={{ animationDelay: '0.5s' }}>👋</span>
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-purple-600 flex items-center">
+                Hey {user.name}! 
+                <Sparkles className="w-6 h-6 ml-2 text-yellow-300 animate-pulse" />
+              </h1>
+              <p className="text-gray-600 text-lg mt-2">Ready to level up your learning game today?</p>
+              <div className="flex items-center mt-3">
+                <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-ping"></div>
+                <p className="text-purple-600 text-sm">Active now</p>
+              </div>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3">
               <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full" style={{width: '68%'}}></div>
@@ -109,141 +136,169 @@ export function Dashboard({ user }: DashboardProps) {
           </div>
         </div>
       </div>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        {quickStats.map((stat, index) => {
-          const Icon = stat.icon;
-          const gradientClasses = {
-            blue: 'from-blue-500 to-cyan-500',
-            green: 'from-green-500 to-emerald-500',
-            purple: 'from-purple-500 to-pink-500',
-            yellow: 'from-yellow-500 to-orange-500'
-          };
-          const bgClasses = {
-            blue: 'from-blue-50 to-cyan-50',
-            green: 'from-green-50 to-emerald-50',
-            purple: 'from-purple-50 to-pink-50',
-            yellow: 'from-yellow-50 to-orange-50'
-          };
-          
-          return (
-            <div key={index} className={`bg-gradient-to-br ${bgClasses[stat.color as keyof typeof bgClasses]} p-6 rounded-2xl border border-white/50 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</p>
-                  <p className="text-sm font-medium text-gray-700">{stat.label}</p>
-                </div>
-                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${gradientClasses[stat.color as keyof typeof gradientClasses]} flex items-center justify-center shadow-lg`}>
-                  <Icon className="w-7 h-7 text-white" />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
       <div className="grid lg:grid-cols-3 gap-8">
-        {/* Quick Actions */}
-        <div className="lg:col-span-1">
-          <div className="bg-white/60 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg p-6">
-            <div className="flex items-center space-x-2 mb-6">
-              <span className="text-xl">⚡</span>
-              <h2 className="text-xl font-bold text-gray-900">Quick Actions</h2>
-            </div>
-            <div className="space-y-4">
-              <Link
-                to="/communities"
-                className="flex items-center p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl hover:from-blue-100 hover:to-cyan-100 transition-all duration-300 group hover:shadow-md transform hover:scale-[1.02]"
-              >
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                  <span className="text-xl">❓</span>
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-900">Ask a Question</p>
-                  <p className="text-xs text-gray-600">Get help from study buddies</p>
-                </div>
-              </Link>
-              
-              <Link
-                to="/materials"
-                className="flex items-center p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl hover:from-green-100 hover:to-emerald-100 transition-all duration-300 group hover:shadow-md transform hover:scale-[1.02]"
-              >
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                  <span className="text-xl">📚</span>
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-900">Upload Materials</p>
-                  <p className="text-xs text-gray-600">Share your awesome notes</p>
-                </div>
-              </Link>
-              
-              <Link
-                to="/meetups"
-                className="flex items-center p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl hover:from-purple-100 hover:to-pink-100 transition-all duration-300 group hover:shadow-md transform hover:scale-[1.02]"
-              >
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                  <span className="text-xl">📅</span>
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-900">Schedule Meetup</p>
-                  <p className="text-xs text-gray-600">Plan epic study sessions</p>
-                </div>
-              </Link>
-              
-              <Link
-                to="/communities"
-                className="flex items-center p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-2xl hover:from-yellow-100 hover:to-orange-100 transition-all duration-300 group hover:shadow-md transform hover:scale-[1.02]"
-              >
-                <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                  <span className="text-xl">👥</span>
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-900">Join Community</p>
-                  <p className="text-xs text-gray-600">Find your study squad</p>
-                </div>
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content */}
+        {/* Main Content: Recent Activity + Upcoming Meetups */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Recent Activity */}
-          <div className="bg-white/60 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg p-6">
+          {/* Recent Activity with enhanced animations */}
+          <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-white/50 shadow-lg p-6 transform transition-all duration-500 hover:shadow-xl hover:-translate-y-1">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-2">
-                <span className="text-xl">📈</span>
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-white" />
+                </div>
                 <h2 className="text-xl font-bold text-gray-900">Recent Activity</h2>
               </div>
-              <Link to="/communities" className="text-purple-600 hover:text-purple-700 font-medium text-sm hover:underline">
-                See all activity →
+              <Link to="/communities" className="text-purple-600 hover:text-purple-700 font-medium text-sm hover:underline flex items-center group">
+                See all activity 
+                <Zap className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" />
               </Link>
             </div>
             
             <div className="space-y-3">
-              {recentActivity.map((activity) => {
-                const getEmoji = () => {
-                  switch (activity.type) {
-                    case 'question': return '❓';
-                    case 'meetup': return '📅';
-                    case 'material': return '📚';
-                    case 'achievement': return '🏆';
-                    default: return '💬';
-                  }
-                };
-                
-                return (
-                  <div key={activity.id} className="flex items-start space-x-4 p-4 hover:bg-white/40 rounded-xl transition-all duration-200 hover:shadow-sm border border-transparent hover:border-white/30">
-                    <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-pink-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <span className="text-lg">{getEmoji()}</span>
+              {loading ? (
+                <div className="flex items-center justify-center py-8 space-x-2">
+                  <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                  <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                </div>
+              ) : (
+                <>
+                  {/* Posts */}
+                  {recentPosts.length === 0 && (
+                    <div className="text-center py-8 transform hover:scale-105 transition-transform duration-300">
+                      <div className="w-16 h-16 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+                        <MessageSquare className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <p className="text-gray-500 text-sm mb-4">No recent posts found.</p>
+                      <Link 
+                        to="/communities" 
+                        className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-lg transition-all transform hover:-translate-y-0.5"
+                      >
+                        Join a community to see activity
+                      </Link>
                     </div>
+                  )}
+                  {recentPosts.slice(0, 5).map((activity, index) => {
+                    const postTime = new Date(activity.createdAt).toLocaleString();
+                    // Show author username instead of community
+                    let authorName = '';
+                    if (activity.author && typeof activity.author === 'object') {
+                      authorName = activity.author.username;
+                    } else if (typeof activity.author === 'string') {
+                      authorName = activity.author;
+                    }
+                    return (
+                      <div 
+                        key={activity.id} 
+                        className="flex items-start space-x-4 p-4 bg-gradient-to-r from-white to-gray-50 rounded-xl transition-all duration-300 hover:shadow-md hover:border-purple-200/50 border border-transparent transform hover:-translate-y-0.5"
+                        style={{ transitionDelay: `${index * 100}ms` }}
+                      >
+                        <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-pink-100 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                          <span className="text-lg">💬</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{activity.title}</p>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <span className="text-xs font-medium text-purple-600 bg-purple-100 px-2 py-1 rounded-full">{authorName}</span>
+                            <span className="text-xs text-gray-400">•</span>
+                            <span className="text-xs text-gray-500">{postTime}</span>
+                          </div>
+                        </div>
+                        <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0 mt-2 animate-pulse"></div>
+                      </div>
+                    );
+                  })}
+                  
+                  {/* Achievements */}
+                  {recentAchievements.length === 0 && recentPosts.length === 0 && (
+                    <div className="text-gray-500 text-sm text-center py-4">No recent achievements found.</div>
+                  )}
+                  {recentAchievements.slice(0, 5).map((activity, index) => {
+                    const unlockedTime = activity.unlockedAt ? new Date(activity.unlockedAt).toLocaleString() : '';
+                    return (
+                      <div 
+                        key={activity._id} 
+                        className="flex items-start space-x-4 p-4 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl transition-all duration-300 hover:shadow-md border border-yellow-100/50 transform hover:-translate-y-0.5"
+                        style={{ transitionDelay: `${index * 100}ms` }}
+                      >
+                        <div className="w-10 h-10 bg-gradient-to-br from-yellow-100 to-orange-100 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                          <span className="text-lg">🏆</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{activity.name}</p>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <span className="text-xs font-medium text-amber-600 bg-amber-100 px-2 py-1 rounded-full">Achievement Unlocked</span>
+                            <span className="text-xs text-gray-400">•</span>
+                            <span className="text-xs text-gray-500">{unlockedTime}</span>
+                          </div>
+                        </div>
+                        <Sparkles className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-2 animate-pulse" />
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+          {/* Upcoming Meetups with enhanced animations */}
+          <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-white/50 shadow-lg p-6 transform transition-all duration-500 hover:shadow-xl hover:-translate-y-1">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-pink-500 rounded-lg flex items-center justify-center">
+                  <Rocket className="w-4 h-4 text-white" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900">Upcoming Meetups</h2>
+              </div>
+              <Link to="/meetups" className="text-purple-600 hover:text-purple-700 font-medium text-sm hover:underline flex items-center group">
+                See all meetups
+                <Zap className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+            
+            <div className="space-y-4">
+              {recentMeetups.length === 0 && !loading && (
+                <div className="text-center py-8 transform hover:scale-105 transition-transform duration-300">
+                  <div className="w-16 h-16 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+                    <Calendar className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 text-sm mb-4">No upcoming meetups found.</p>
+                  <Link 
+                    to="/meetups" 
+                    className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-lg transition-all transform hover:-translate-y-0.5"
+                  >
+                    Schedule your first meetup
+                  </Link>
+                </div>
+              )}
+              {recentMeetups.slice(0, 5).map((meetup, index) => {
+                const startTime = meetup.dateTime && meetup.dateTime.start ? new Date(meetup.dateTime.start).toLocaleString() : '';
+                let communityName = '';
+                if (typeof meetup.community === 'string') {
+                  communityName = meetup.community;
+                } else if (meetup.community && 'name' in meetup.community) {
+                  communityName = meetup.community.name;
+                }
+                return (
+                  <div 
+                    key={meetup.id} 
+                    className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 border border-blue-100/50 rounded-2xl transition-all duration-300 hover:shadow-md hover:border-blue-200/50 transform hover:-translate-y-0.5"
+                    style={{ transitionDelay: `${index * 100}ms` }}
+                  >
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{activity.title}</p>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <span className="text-xs font-medium text-purple-600">{activity.community}</span>
-                        <span className="text-xs text-gray-400">•</span>
-                        <span className="text-xs text-gray-500">{activity.time}</span>
+                      <h3 className="font-semibold text-gray-900 mb-2">{meetup.title}</h3>
+                      <div className="flex items-center space-x-3 text-xs">
+                        <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-medium flex items-center">
+                          <Calendar className="w-3 h-3 mr-1" />
+                          {startTime}
+                        </span>
+                        <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium flex items-center">
+                          <span className="w-3 h-3 mr-1">👥</span>
+                          {meetup.attendees?.length ?? 0}
+                        </span>
+                        <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                          {communityName}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -252,28 +307,67 @@ export function Dashboard({ user }: DashboardProps) {
             </div>
           </div>
 
-          {/* Upcoming Meetups */}
-          <div className="bg-white/60 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-2">
-                <span className="text-xl">🚀</span>
-                <h2 className="text-xl font-bold text-gray-900">Upcoming Meetups</h2>
+        {/* Quick Actions with enhanced animations */}
+        <div className="transform transition-all duration-700 delay-300" style={{ transform: isVisible ? 'translateY(0) rotate(0)' : 'translateY(20px) rotate(1deg)', opacity: isVisible ? 1 : 0 }}>
+          <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-white/50 shadow-lg p-6 hover:shadow-xl transition-all duration-500 hover:-translate-y-1">
+            <div className="flex items-center space-x-2 mb-6">
+              <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
+                <Zap className="w-4 h-4 text-white" />
               </div>
-              <Link to="/meetups" className="text-purple-600 hover:text-purple-700 font-medium text-sm hover:underline">
-                See all meetups →
-              </Link>
+              <h2 className="text-xl font-bold text-gray-900">Quick Actions</h2>
             </div>
             
             <div className="space-y-4">
-              {upcomingMeetups.map((meetup) => (
-                <div key={meetup.id} className="flex items-center justify-between p-4 bg-gradient-to-r from-white/40 to-white/20 border border-white/30 rounded-2xl hover:from-white/60 hover:to-white/40 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 mb-2">{meetup.title}</h3>
-                    <div className="flex items-center space-x-3 text-xs">
-                      <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-medium">⏰ {meetup.time}</span>
-                      <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">👥 {meetup.attendees}</span>
-                      <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">🎯 {meetup.community}</span>
-                    </div>
+              {[
+                { 
+                  to: "/communities", 
+                  label: "Ask a Question", 
+                  description: "Get help from study buddies",
+                  icon: "❓",
+                  color: "from-blue-500 to-cyan-500",
+                  bgColor: "from-blue-50 to-cyan-50",
+                  hoverColor: "from-blue-100 to-cyan-100"
+                },
+                { 
+                  to: "/materials", 
+                  label: "Upload Materials", 
+                  description: "Share your awesome notes",
+                  icon: "📚",
+                  color: "from-green-500 to-emerald-500",
+                  bgColor: "from-green-50 to-emerald-50",
+                  hoverColor: "from-green-100 to-emerald-100"
+                },
+                { 
+                  to: "/meetups", 
+                  label: "Schedule Meetup", 
+                  description: "Plan epic study sessions",
+                  icon: "📅",
+                  color: "from-purple-500 to-pink-500",
+                  bgColor: "from-purple-50 to-pink-50",
+                  hoverColor: "from-purple-100 to-pink-100"
+                },
+                { 
+                  to: "/communities", 
+                  label: "Join Community", 
+                  description: "Find your study squad",
+                  icon: "👥",
+                  color: "from-yellow-500 to-orange-500",
+                  bgColor: "from-yellow-50 to-orange-50",
+                  hoverColor: "from-yellow-100 to-orange-100"
+                }
+              ].map((action, index) => (
+                <Link
+                  key={index}
+                  to={action.to}
+                  className={`flex items-center p-4 bg-gradient-to-r ${action.bgColor} rounded-2xl hover:${action.hoverColor} transition-all duration-300 group hover:shadow-md transform hover:scale-[1.02] border border-transparent hover:border-white/30`}
+                  style={{ transitionDelay: `${index * 100}ms` }}
+                >
+                  <div className={`w-12 h-12 bg-gradient-to-br ${action.color} rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform shadow-md`}>
+                    <span className="text-xl">{action.icon}</span>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">{action.label}</p>
+                    <p className="text-xs text-gray-600">{action.description}</p>
                   </div>
                   <button className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-5 py-2 rounded-xl font-medium hover:from-purple-600 hover:to-pink-600 transition-all duration-200 transform hover:scale-105 shadow-lg">
                     Join 🎉
@@ -287,3 +381,5 @@ export function Dashboard({ user }: DashboardProps) {
     </div>
   );
 }
+
+

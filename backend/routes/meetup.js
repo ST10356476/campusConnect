@@ -7,7 +7,7 @@ const {
   meetupHostedMiddleware
 } = require('../src/middleware/achievementMiddleware');
 
-console.log('MEETUP ROUTES: mounted');
+// Meetup routes mounted
 
 // Get all meetups
 router.get('/', ctrl.getMeetups);

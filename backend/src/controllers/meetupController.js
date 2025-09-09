@@ -1,7 +1,7 @@
-console.log('=== LOADING MEETUP CONTROLLER ===');
+// Loading Meetup Controller
 const Meetup = require('../models/Meetup'); // ✅ FIXED PATH
-console.log('✅ Meetup model loaded successfully');
-console.log('=== CONTROLLER LOADED ===');
+// Meetup model loaded successfully
+// Controller loaded
 
 // helper: build Date from strings like "2025-09-11" + "14:30"
 function computeStartAt(dateStr, timeStr) {

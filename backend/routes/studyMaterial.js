@@ -105,7 +105,7 @@ const extractTextFromBuffer = async (buffer, fileType) => {
         
       case "application/pdf":
         // PDF files - Enhanced PDF parsing
-        console.log("🔍 Processing PDF file, buffer size:", buffer.length);
+  // Processing PDF file, buffer size
         try {
           const pdfResult = await pdfParse(buffer, {
             // PDF parsing options for better text extraction
@@ -113,11 +113,11 @@ const extractTextFromBuffer = async (buffer, fileType) => {
             disableCombineTextItems: false
           });
           extractedText = pdfResult.text.trim();
-          console.log("✅ PDF text extracted successfully, length:", extractedText.length);
+          // PDF text extracted successfully
           
           // If no text was extracted, try alternative approach
           if (!extractedText || extractedText.length < 10) {
-            console.log("⚠️ PDF text extraction yielded minimal results, trying alternative...");
+            // PDF text extraction yielded minimal results, trying alternative
             const altResult = await pdfParse(buffer, { 
               pagerender: null // Try without page rendering
             });

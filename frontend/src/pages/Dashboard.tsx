@@ -45,11 +45,11 @@ export function Dashboard({ user }: DashboardProps) {
     async function fetchData() {
       setLoading(true);
       try {
-        console.log('User object:', user);
+  // User object loaded
         
         // Fetch recent meetups
         const meetupsRes = await apiService.getMeetups({ sortBy: 'dateTime.start:desc', limit: 3 });
-        console.log('Meetups API response:', meetupsRes);
+  // Meetups API response loaded
         
         let meetupsArr: Meetup[] = [];
         if (meetupsRes && meetupsRes.success && Array.isArray(meetupsRes.meetups)) {
@@ -64,7 +64,7 @@ export function Dashboard({ user }: DashboardProps) {
         // Fetch posts from joined communities
         let posts: CommunityPost[] = [];
         if (user.communities && Array.isArray(user.communities) && user.communities.length > 0) {
-          console.log('User communities:', user.communities);
+          // User communities loaded
           
           const validCommunityIds = user.communities
             .map((c: any) => (typeof c === 'string' ? c : c?.id || c?._id || ''))
@@ -76,7 +76,7 @@ export function Dashboard({ user }: DashboardProps) {
                 limit: 3, 
                 sortBy: 'createdAt:desc' 
               });
-              console.log(`Posts for community ${communityId}:`, postsRes);
+              // Posts for community loaded
               
               if (postsRes && postsRes.success && Array.isArray(postsRes.posts)) {
                 posts = posts.concat(postsRes.posts);
@@ -89,13 +89,13 @@ export function Dashboard({ user }: DashboardProps) {
           posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
           posts = posts.slice(0, 3);
         } else {
-          console.log('No user communities found or user.communities is empty.');
+          // No user communities found or user.communities is empty
         }
         setRecentPosts(posts);
 
         // Fetch achievements
         const achievementsRes = await apiService.getAchievements();
-        console.log('Achievements API response:', achievementsRes);
+  // Achievements API response loaded
         
         let achievementsArr: Achievement[] = [];
         if (achievementsRes && achievementsRes.success && achievementsRes.data && Array.isArray(achievementsRes.data.achievements)) {

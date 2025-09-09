@@ -197,7 +197,7 @@ export default function StudyMaterials({ user }: StudyMaterialsProps) {
   const fetchMaterials = async () => {
     try {
       const res = await axios.get<StudyMaterial[]>("http://localhost:5000/api/study-materials");
-      console.log('Fetched materials:', res.data);
+  // Fetched materials
       setMaterials(res.data || []);
       setError("");
     } catch (err: any) {

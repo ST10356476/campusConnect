@@ -7,31 +7,31 @@ const getUserAchievements = async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
     
-    console.log('🔍 Getting achievements for user:', userId);
+  // Getting achievements for user
     
     // Get user with their achievement progress
     const user = await User.findById(userId).populate('achievements.achievementId');
     
     if (!user) {
-      console.log('❌ User not found:', userId);
+  // User not found
       return res.status(404).json({
         success: false,
         message: 'User not found'
       });
     }
 
-    console.log('👤 User found:', user.username || user.email);
-    console.log('📊 User achievements count:', user.achievements.length);
+  // User found
+  // User achievements count
 
     // Get all available achievements
     const allAchievements = await Achievement.find({});
-    console.log('🏆 Total achievements in database:', allAchievements.length);
+  // Total achievements in database
     
     if (allAchievements.length === 0) {
-      console.log('⚠️ No achievements found in database, initializing...');
+  // No achievements found in database, initializing
       await initializeAchievements();
       const newAchievements = await Achievement.find({});
-      console.log('✅ Achievements initialized, count:', newAchievements.length);
+  // Achievements initialized
     }
 
     // Map achievements with user progress
@@ -53,7 +53,7 @@ const getUserAchievements = async (req, res) => {
     const totalCount = allAchievements.length;
     const completionRate = totalCount > 0 ? Math.round((unlockedCount / totalCount) * 100) : 0;
 
-    console.log('📈 Stats calculated:', { unlockedCount, totalCount, completionRate });
+  // Stats calculated
 
     res.json({
       success: true,
@@ -335,7 +335,7 @@ const initializeAchievements = async () => {
     ];
 
     await Achievement.insertMany(defaultAchievements);
-    console.log('Default achievements initialized');
+  // Default achievements initialized
   } catch (error) {
     console.error('Error initializing achievements:', error);
   }

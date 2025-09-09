@@ -7,7 +7,7 @@ const Community = require("../src/models/Community");
 // GET /api/search?q=query
 router.get("/", async (req, res) => {
   const query = req.query.q;
-  console.log("Search query:", query);
+  // Search query received
   
   if (!query) return res.status(400).json({ message: "Search query required" });
 
@@ -40,12 +40,7 @@ router.get("/", async (req, res) => {
         .limit(100),
     ]);
 
-    console.log("Search results:", {
-      materials: materials.length,
-      meetups: meetups.length,
-      communities: communities.length
-    });
-
+    // Search results returned
     res.json({
       materials: materials.map(m => ({
         _id: m._id,

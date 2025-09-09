@@ -42,8 +42,8 @@ const { initializeAchievements } = require('./src/controllers/achievementControl
 
 // Connect to MongoDB and initialize achievements
 connectDB().then(async () => {
-  console.log('✅ MongoDB Connected');
-  console.log('🏆 Initializing achievements...');
+  // MongoDB Connected
+  // Initializing achievements
   await initializeAchievements();
 }).catch(error => {
   console.error('❌ Database connection failed:', error);
@@ -72,9 +72,9 @@ app.use('/api', limiter);
 
 // Enhanced logging middleware for debugging
 app.use('/api', (req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  // Log request method and URL
   if (req.body && Object.keys(req.body).length > 0) {
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
+  // Log request body
   }
   next();
 });
@@ -85,7 +85,7 @@ try {
   app.use('/api/communities', require('./routes/communities'));
   app.use('/api/posts', require('./routes/posts'));
   app.use('/api/achievements', require('./routes/achievements'));
-  console.log('All routes loaded successfully');
+  // All routes loaded successfully
 } catch (error) {
   console.error('Error loading routes:', error);
 }
@@ -144,7 +144,7 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+  // Server running on port
+  // Environment info
+  // Frontend URL info
 });

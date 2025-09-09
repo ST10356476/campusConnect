@@ -78,7 +78,7 @@ export default function Communities({ user }: CommunitiesProps) {
       setLoading(true);
       
       if (!createForm.name.trim() || !createForm.description.trim()) {
-        alert('Please fill in all required fields');
+  // Show validation error to user
         return;
       }
       
@@ -106,7 +106,7 @@ export default function Communities({ user }: CommunitiesProps) {
       }
     } catch (error: any) {
       console.error('Failed to create community:', error);
-      alert(error.message || 'Failed to create community');
+  // Show error notification to user
     } finally {
       setLoading(false);
     }
@@ -132,7 +132,7 @@ export default function Communities({ user }: CommunitiesProps) {
       }
     } catch (error: any) {
       console.error('Failed to update community:', error);
-      alert(error.message || 'Failed to update community');
+  // Show error notification to user
     } finally {
       setLoading(false);
     }
@@ -146,7 +146,7 @@ export default function Communities({ user }: CommunitiesProps) {
       }
     } catch (error: any) {
       console.error('Failed to join community:', error);
-      alert(error.message || 'Failed to join community');
+  // Show error notification to user
     }
   };
 
@@ -158,7 +158,7 @@ export default function Communities({ user }: CommunitiesProps) {
       }
     } catch (error: any) {
       console.error('Failed to leave community:', error);
-      alert(error.message || 'Failed to leave community');
+  // Show error notification to user
     }
   };
 
@@ -172,7 +172,7 @@ export default function Communities({ user }: CommunitiesProps) {
       }
     } catch (error: any) {
       console.error('Failed to delete community:', error);
-      alert(error.message || 'Failed to delete community');
+  // Show error notification to user
     }
   };
 

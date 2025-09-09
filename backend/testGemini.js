@@ -31,7 +31,7 @@ const payload = {
 // Function to call the Gemini API
 async function generateContent() {
   try {
-    console.log("Calling Gemini API...");
+  // Calling Gemini API
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: {
@@ -47,8 +47,8 @@ async function generateContent() {
 
     const data = await response.json();
     const generatedText = data.candidates[0].content.parts[0].text;
-    console.log("Generated Content:\n");
-    console.log(generatedText);
+  // Generated Content
+  // Output generated text
 
   } catch (error) {
     console.error('An error occurred:', error.message);

@@ -159,7 +159,7 @@ const extractTextFromBuffer = async (buffer, fileType) => {
         }
     }
     
-  // Final extracted text length for fileType
+    console.log(`📊 Final extracted text length for ${fileType}:`, extractedText.length);
     return extractedText;
   } catch (error) {
     console.error(`Text extraction failed for ${fileType}:`, error.message);
@@ -218,7 +218,7 @@ router.post("/upload", protect, upload.single("file"), async (req, res) => {
       });
     }
 
-  // Uploading file by user
+    console.log("📤 Uploading file:", req.file.originalname, "by user:", req.user.id);
 
     const fileData = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
     
@@ -245,7 +245,7 @@ router.post("/upload", protect, upload.single("file"), async (req, res) => {
     // Populate the uploadedBy field before sending response
     await material.populate('uploadedBy', 'username profile.firstName profile.lastName');
     
-  // Material saved
+    console.log("✅ Material saved:", material._id);
     
     res.status(201).json({ success: true, material });
   } catch (err) {
@@ -257,7 +257,7 @@ router.post("/upload", protect, upload.single("file"), async (req, res) => {
 // -------------------- Generate Summary / Flashcards / Quiz --------------------
 router.post("/:id/generate", protect, async (req, res) => {
   try {
-  // Generation request received
+    console.log("📩 Generation request received for:", req.params.id, "Type:", req.body.type);
     
     const { type } = req.body;
     const material = await StudyMaterial.findById(req.params.id);
@@ -269,11 +269,11 @@ router.post("/:id/generate", protect, async (req, res) => {
     let extractedText = "";
     
     try {
-  // Extracting text from file
+      console.log("📖 Extracting text from", material.fileType, "file");
       const buffer = await fetchFile(material.url);
       
       extractedText = await extractTextFromBuffer(buffer, material.fileType);
-  // Text extracted
+      console.log("✅ Text extracted, length:", extractedText.length);
     } catch (extractError) {
       console.error("❌ Text extraction failed:", extractError.message);
       return res.status(400).json({ error: extractError.message });
@@ -286,7 +286,7 @@ router.post("/:id/generate", protect, async (req, res) => {
     // Limit text length to avoid API limits
     if (extractedText.length > 10000) {
       extractedText = extractedText.substring(0, 10000) + "...";
-  // Text truncated to 10,000 characters
+      console.log("⚠️ Text truncated to 10,000 characters");
     }
 
     // -------------------- Build prompt --------------------
@@ -319,7 +319,7 @@ Return only the JSON array, no markdown formatting or explanations.`;
     }
 
     // -------------------- Call Gemini --------------------
-  // Calling Gemini API
+    console.log("🤖 Calling Gemini API...");
     
     const payload = {
       contents: [{ parts: [{ text: prompt }] }],
@@ -338,7 +338,7 @@ Return only the JSON array, no markdown formatting or explanations.`;
       throw new Error("No content returned from Gemini API");
     }
 
-  // Gemini response received
+    console.log("✅ Gemini response received, length:", text.length);
 
     // -------------------- Process response --------------------
     let parsed = null;
@@ -352,7 +352,7 @@ Return only the JSON array, no markdown formatting or explanations.`;
       
       try {
         parsed = JSON.parse(cleanText);
-  // JSON parsed successfully
+        console.log("✅ JSON parsed successfully, items:", parsed.length);
         
         // Validate structure
         if (type === "flashcards") {
@@ -390,7 +390,7 @@ Return only the JSON array, no markdown formatting or explanations.`;
     // Populate before sending response
     await material.populate('uploadedBy', 'username profile.firstName profile.lastName');
     
-  // Material updated and saved
+    console.log("✅ Material updated and saved");
     
     res.json({ success: true, material });
   } catch (err) {
@@ -402,20 +402,20 @@ Return only the JSON array, no markdown formatting or explanations.`;
 // -------------------- Save Material --------------------
 router.post("/:id/save", protect, async (req, res) => {
   try {
-  // Save request - Material ID and User ID
+    console.log("🔍 Save request - Material ID:", req.params.id, "User ID:", req.user.id);
     
     const material = await StudyMaterial.findById(req.params.id);
     if (!material) {
       return res.status(404).json({ error: "Material not found" });
     }
 
-  // Current savedBy array
-  // User ID type
+    console.log("📋 Current savedBy array:", material.savedBy);
+    console.log("🔍 User ID type:", typeof req.user.id, "Value:", req.user.id);
 
     // Check if already saved
     const isAlreadySaved = material.savedBy.some(userId => userId.toString() === req.user.id.toString());
     if (isAlreadySaved) {
-  // Material already saved by user
+      console.log("⚠️ Material already saved by user");
       return res.status(400).json({ error: "Material already saved" });
     }
 
@@ -423,12 +423,12 @@ router.post("/:id/save", protect, async (req, res) => {
     material.savedBy.push(req.user.id);
     await material.save();
     
-  // Updated savedBy array
+    console.log("✅ Updated savedBy array:", material.savedBy);
     
     // Populate before sending response
     await material.populate('uploadedBy', 'username profile.firstName profile.lastName');
     
-  // Material saved by user
+    console.log("✅ Material saved by user:", req.user.id, "Material ID:", material._id);
     res.json({ success: true, material });
   } catch (err) {
     console.error("Save error:", err.message);
@@ -439,28 +439,28 @@ router.post("/:id/save", protect, async (req, res) => {
 // -------------------- Unsave Material --------------------
 router.delete("/:id/save", protect, async (req, res) => {
   try {
-  // Unsave request - Material ID and User ID
+    console.log("🔍 Unsave request - Material ID:", req.params.id, "User ID:", req.user.id);
     
     const material = await StudyMaterial.findById(req.params.id);
     if (!material) {
       return res.status(404).json({ error: "Material not found" });
     }
 
-  // Current savedBy array before unsave
+    console.log("📋 Current savedBy array before unsave:", material.savedBy);
 
     // Remove user from savedBy array
     const originalLength = material.savedBy.length;
     material.savedBy = material.savedBy.filter(userId => userId.toString() !== req.user.id.toString());
     
-  // Filtered savedBy array
-  // Array length changed
+    console.log("📋 Filtered savedBy array:", material.savedBy);
+    console.log("📊 Array length changed from", originalLength, "to", material.savedBy.length);
     
     await material.save();
     
     // Populate before sending response
     await material.populate('uploadedBy', 'username profile.firstName profile.lastName');
     
-  // Material unsaved by user
+    console.log("✅ Material unsaved by user:", req.user.id, "Material ID:", material._id);
     res.json({ success: true, material });
   } catch (err) {
     console.error("Unsave error:", err.message);
@@ -471,30 +471,30 @@ router.delete("/:id/save", protect, async (req, res) => {
 // -------------------- Delete Study Material --------------------
 router.delete("/:id", protect, async (req, res) => {
   try {
-  // Delete request - Material ID and User ID
+    console.log("🔍 Delete request - Material ID:", req.params.id, "User ID:", req.user.id);
     
     const material = await StudyMaterial.findById(req.params.id);
     if (!material) {
       return res.status(404).json({ error: "Material not found" });
     }
 
-  // Delete authorization check
-  // Material uploadedBy
-  // Material uploadedBy type
-  // Current user ID
-  // Current user ID type
+    console.log("🔍 Delete authorization check:");
+    console.log("  - Material uploadedBy:", material.uploadedBy);
+    console.log("  - Material uploadedBy type:", typeof material.uploadedBy);
+    console.log("  - Current user ID:", req.user.id);
+    console.log("  - Current user ID type:", typeof req.user.id);
 
     // Check if user is the owner - Convert both to strings for comparison
     const materialOwnerId = material.uploadedBy ? material.uploadedBy.toString() : null;
     const currentUserId = req.user.id ? req.user.id.toString() : null;
 
-  // String comparison
-  // Material owner ID (string)
-  // Current user ID (string)
-  // Are they equal?
+    console.log("🔍 String comparison:");
+    console.log("  - Material owner ID (string):", materialOwnerId);
+    console.log("  - Current user ID (string):", currentUserId);
+    console.log("  - Are they equal?", materialOwnerId === currentUserId);
 
     if (!materialOwnerId || materialOwnerId !== currentUserId) {
-  // Authorization failed - User cannot delete this material
+      console.log("❌ Authorization failed - User cannot delete this material");
       return res.status(403).json({ error: "You can only delete materials you uploaded" });
     }
 
@@ -502,14 +502,14 @@ router.delete("/:id", protect, async (req, res) => {
     if (material.filename) {
       try {
         await cloudinary.uploader.destroy(material.filename);
-  // Cloudinary file deleted
+        console.log("✅ Cloudinary file deleted:", material.filename);
       } catch (cloudinaryError) {
         console.warn("⚠️ Cloudinary deletion failed:", cloudinaryError.message);
       }
     }
 
     await StudyMaterial.findByIdAndDelete(req.params.id);
-  // Material deleted successfully
+    console.log("✅ Material deleted successfully:", req.params.id);
     
     res.json({ success: true, message: "Material deleted successfully" });
   } catch (err) {

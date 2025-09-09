@@ -109,7 +109,7 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
       }
     } catch (error: any) {
       console.error('Failed to create post:', error);
-  // Show error notification to user
+      alert(error.message || 'Failed to create post');
     }
   };
 
@@ -125,7 +125,7 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
       }
     } catch (error: any) {
       console.error('Failed to reply:', error);
-  // Show error notification to user
+      alert(error.message || 'Failed to reply');
     }
   };
 
@@ -149,7 +149,7 @@ export function CommunityDetail({ user }: CommunityDetailProps) {
       }
     } catch (error: any) {
       console.error('Failed to join community:', error);
-  // Show error notification to user
+      alert(error.message || 'Failed to join community');
     }
   };
 

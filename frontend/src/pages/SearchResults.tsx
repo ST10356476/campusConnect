@@ -300,12 +300,12 @@ export default function SearchResults() {
                   { method: "POST", credentials: "include" }
                 );
                 if (res.ok) {
-                  // Show success notification to user
+                  alert("Successfully joined the meetup!");
                 } else {
-                  // Show failure notification to user
+                  alert("Failed to join the meetup.");
                 }
               } catch {
-                // Show error notification to user
+                alert("Error joining meetup. Please try again.");
               }
             }}
             className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg text-center font-medium hover:bg-blue-700 transition-colors"

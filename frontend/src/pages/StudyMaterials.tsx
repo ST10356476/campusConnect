@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Upload, FileText, Download, Eye, Sparkles, BookOpen, Brain, Target, Share2, Heart } from 'lucide-react';
 import axios from "axios";
+import { API_BASE_URL } from '../services/api';
 
 interface User {
   id: string;
@@ -196,8 +197,8 @@ export default function StudyMaterials({ user }: StudyMaterialsProps) {
 
   const fetchMaterials = async () => {
     try {
-      const res = await axios.get<StudyMaterial[]>("http://localhost:5000/api/study-materials");
-  // Fetched materials
+      const res = await axios.get<StudyMaterial[]>(`${API_BASE_URL}/study-materials`);
+      // Fetched materials
       setMaterials(res.data || []);
       setError("");
     } catch (err: any) {
@@ -255,7 +256,7 @@ export default function StudyMaterials({ user }: StudyMaterialsProps) {
       }
       
       // Updated endpoint to match backend
-      const res = await axios.post("http://localhost:5000/api/study-materials/upload", formData, {
+    const res = await axios.post(`${API_BASE_URL}/study-materials/upload`, formData, {
         headers: { 
           "Content-Type": "multipart/form-data",
           "Authorization": `Bearer ${token}`
@@ -284,7 +285,7 @@ export default function StudyMaterials({ user }: StudyMaterialsProps) {
       const token = localStorage.getItem("campus_connect_token");
 
       const res = await axios.post(
-        `http://localhost:5000/api/study-materials/${id}/generate`,
+        `${API_BASE_URL}/study-materials/${id}/generate`,
         { type },
         {
           headers: {
@@ -313,7 +314,7 @@ export default function StudyMaterials({ user }: StudyMaterialsProps) {
     
     try {
       const token = localStorage.getItem('campus_connect_token');
-      await axios.delete(`http://localhost:5000/api/study-materials/${id}`, {
+    await axios.delete(`${API_BASE_URL}/study-materials/${id}`, {
         headers: {
           "Authorization": token ? `Bearer ${token}` : ""
         }

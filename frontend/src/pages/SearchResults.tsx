@@ -3,6 +3,7 @@ import { Navbar } from "../components/ui/Navbar";
 import { AuthContext, AuthContextType } from "../App";
 import { useSearchParams, Link } from "react-router-dom";
 import { Calendar, Clock, Users, Video, BookOpen, Users as UsersIcon, CalendarDays, FileText, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { API_BASE_URL } from "../services/api";
 
 type Attendee = { userId?: string; name?: string };
 
@@ -55,7 +56,7 @@ export default function SearchResults() {
       setError("");
       try {
         const res = await fetch(
-          `http://localhost:5000/api/search?q=${encodeURIComponent(query)}`,
+          `${API_BASE_URL}/search?q=${encodeURIComponent(query)}`,
           { credentials: "include" }
         );
         
@@ -296,7 +297,7 @@ export default function SearchResults() {
             onClick={async () => {
               try {
                 const res = await fetch(
-                  `http://localhost:5000/api/meetups/${item.id}/join`,
+                    `${API_BASE_URL}/meetups/${item.id}/join`,
                   { method: "POST", credentials: "include" }
                 );
                 if (res.ok) {

@@ -17,7 +17,7 @@ const MODEL_NAME = "gemini-2.0-flash-exp";
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
 
 if (!API_KEY) {
-  console.error("❌ Error: GEMINI_API_KEY is not defined in the .env file.");
+  console.error("❌ Error: GEMINI_API_KEY");
   process.exit(1);
 }
 

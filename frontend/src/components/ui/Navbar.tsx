@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { API_BASE_URL } from '../../services/api';
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Bell, Search, Menu, X } from "lucide-react";
 
@@ -54,7 +55,7 @@ export function Navbar({ user, onLogout }: NavbarProps) {
       setSearchLoading(true);
       try {
         const res = await fetch(
-          `http://localhost:5000/api/search?q=${encodeURIComponent(query)}`,
+          `${API_BASE_URL}/search?q=${encodeURIComponent(query)}`,
           { credentials: "include" }
         );
         

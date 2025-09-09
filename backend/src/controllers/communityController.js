@@ -51,7 +51,7 @@ const getCommunities = async (req, res) => {
       id: community._id.toString(),
       memberCount: community.members.length,
       isMember: community.members.some(member => 
-        member.user._id.toString() === req.user.id
+        member.user && member.user._id && member.user._id.toString() === req.user.id
       )
     }));
 

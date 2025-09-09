@@ -3,7 +3,6 @@
 > **A comprehensive student collaboration platform for universities**  
 > *Built for hackathon competition - connecting students through study groups, resource sharing, and collaborative learning*
 
-![Campus Connect Banner](https://via.placeholder.com/1200x300/4f46e5/ffffff?text=Campus+Connect)
 
 ## 🌟 Overview
 

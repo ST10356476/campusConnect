@@ -1,4 +1,26 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel
+} from '../components/ui/alert-dialog';
+  // Welcome modal state
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  useEffect(() => {
+    // Show welcome modal for first-time users
+    if (typeof window !== 'undefined') {
+      const seen = localStorage.getItem('campusconnect_welcome');
+      if (!seen) {
+        setShowWelcome(true);
+        localStorage.setItem('campusconnect_welcome', '1');
+      }
+    }
+  }, []);
 import { Link } from 'react-router-dom';
 import { BookOpen, Users, Calendar, Award, Plus, MessageSquare, FileText } from 'lucide-react';
 
@@ -103,7 +125,8 @@ export function Dashboard({ user }: DashboardProps) {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
+  <div className="container mx-auto px-4 py-8">
       {/* Welcome Header with enhanced animation */}
       <div className={`mb-10 transform transition-all duration-700 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
         <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-8 text-white shadow-lg hover:shadow-xl transition-all duration-500 hover:-translate-y-1 relative overflow-hidden">
@@ -379,6 +402,7 @@ export function Dashboard({ user }: DashboardProps) {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

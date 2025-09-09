@@ -284,8 +284,21 @@ export default function Communities({ user }: CommunitiesProps) {
             <div key={community.id} className="group bg-white/60 backdrop-blur-sm rounded-3xl shadow-lg border border-white/50 p-8 hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
               <div className="flex items-start justify-between mb-6">
                 <div className="flex items-center space-x-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
-                    👥
+                  <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform overflow-hidden">
+                    {community.avatar?.url || typeof community.avatar === 'string' ? (
+                      <img
+                        src={community.avatar?.url || community.avatar}
+                        alt={community.name}
+                        className="w-full h-full rounded-2xl object-cover"
+                        onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    ) : (
+                      <span className="font-bold text-purple-600">
+                        {community.name && typeof community.name === 'string' && community.name.trim().length > 0
+                          ? community.name.trim().split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
+                          : 'CC'}
+                      </span>
+                    )}
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-gray-900 group-hover:text-purple-700 transition-colors">

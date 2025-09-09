@@ -13,7 +13,7 @@ const meetupSchema = new mongoose.Schema({
   time:         { type: String, required: [true, 'Please provide meetup time'] },   // HH:mm (24h)
   startAt:      { type: Date },                                                     // NEW: derived from date+time
   duration:     { type: Number, default: 60 },
-  maxAttendees: { type: Number, required: [true, 'Please provide max attendees'], min: 1, max: 100 },
+  maxAttendees: { type: Number, required: [true, 'Please provide max attendees'], min: 1, max: 500 },
   meetingLink:  { type: String, required: [true, 'Please provide meeting link'] },
   organizer: {
     id:   { type: String, required: true },

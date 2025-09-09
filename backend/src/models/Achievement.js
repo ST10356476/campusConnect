@@ -29,6 +29,10 @@ const AchievementSchema = new mongoose.Schema({
       required: true
     }
   },
+  points: {
+    type: Number,
+    default: 0
+  },
   rarity: {
     type: String,
     enum: ['common', 'uncommon', 'rare', 'epic', 'legendary'],
@@ -38,4 +42,4 @@ const AchievementSchema = new mongoose.Schema({
   timestamps: true
 });
 
-module.exports = mongoose.models.Achievement || mongoose.model('Achievement', AchievementSchema);
+module.exports = mongoose.model('Achievement', AchievementSchema);

@@ -11,11 +11,6 @@ const {
   getCommunityPosts
 } = require('../src/controllers/postController');
 const { protect } = require('../src/middleware/auth');
-const {
-  postCreatedMiddleware,
-  replyCreatedMiddleware,
-  likeMiddleware
-} = require('../src/middleware/achievementMiddleware');
 
 const router = express.Router();
 
@@ -37,21 +32,6 @@ const postValidation = [
     .withMessage('Community ID is required')
 ];
 
-
-// Reply validation
-const replyValidation = [
-  body('content')
-    .trim()
-    .isLength({ min: 1, max: 2000 })
-    .withMessage('Reply content must be between 1-2000 characters')
-];
-
-// Post Routes with Achievement Tracking
-router.post('/', protect, postCreatedMiddleware, postValidation, createPost);
-router.get('/:id', protect, getPost);
-router.post('/:id/reply', protect, replyCreatedMiddleware, replyValidation, replyToPost);
-router.post('/:id/like', protect, likeMiddleware, toggleLikePost);
-
 // Routes
 router.post('/', protect, postValidation, createPost);
 router.get('/:id', protect, getPost);
@@ -60,6 +40,5 @@ router.post('/:id/reply', protect, replyToPost);
 router.post('/:id/like', protect, toggleLikePost);
 router.post('/:id/pin', protect, togglePinPost);
 router.post('/:id/lock', protect, toggleLockPost);
-
 
 module.exports = router;

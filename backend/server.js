@@ -8,6 +8,7 @@ const connectDB = require('./src/config/database');
 require('dotenv').config();
 
 const studyMaterialRoutes = require('./routes/studyMaterial');
+const searchRoute = require("./routes/search");
 
 const app = express();
 const server = createServer(app);
@@ -22,8 +23,6 @@ const io = new Server(server, {
   }
 });
 
-
-// Import models FIRST to ensure they're registered
 // Connect to MongoDB
 connectDB();
 
@@ -34,19 +33,6 @@ require('./src/models/CommunityPost');
 require('./src/models/Achievement');
 require('./src/models/StudyMaterial');
 require('./src/models/Meetup');
-
-
-// THEN import the achievement controller after models are loaded
-const { initializeAchievements } = require('./src/controllers/achievementController');
-
-// Connect to MongoDB and initialize achievements
-connectDB().then(async () => {
-  console.log('✅ MongoDB Connected');
-  console.log('🏆 Initializing achievements...');
-  await initializeAchievements();
-}).catch(error => {
-  console.error('❌ Database connection failed:', error);
-});
 
 // Middleware
 app.use(helmet());
@@ -68,46 +54,15 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-
-// Enhanced logging middleware for debugging
-app.use('/api', (req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-  if (req.body && Object.keys(req.body).length > 0) {
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
-  }
-  next();
-});
-
-// Routes
-try {
-  app.use('/api/auth', require('./routes/auth'));
-  app.use('/api/communities', require('./routes/communities'));
-  app.use('/api/posts', require('./routes/posts'));
-  app.use('/api/achievements', require('./routes/achievements'));
-  console.log('All routes loaded successfully');
-} catch (error) {
-  console.error('Error loading routes:', error);
-}
-
-try {
-  console.log('Attempting to load meetup route...');
-  const meetupRoute = require('./routes/meetup');
-  console.log('Meetup route loaded successfully');
-  app.use('/api/meetups', meetupRoute);
-} catch (error) {
-  console.error('FAILED to load meetup route:', error.message);
-  console.error('Full error:', error);
-}
-
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/communities', require('./routes/communities'));
 app.use('/api/posts', require('./routes/posts'));
 app.use('/api/study-materials', studyMaterialRoutes);
-
 const meetupRoute = require('./routes/meetup');
 app.use('/api/meetups', meetupRoute);
-
+app.use('/api/study-materials', studyMaterialRoutes);
+app.use("/api/search", searchRoute);
 
 // Health check
 app.get('/health', (req, res) => {

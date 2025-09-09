@@ -137,7 +137,7 @@ exports.getMeetupById = async (req, res) => {
     const { id } = req.params;
     const meetup = await Meetup.findById(id);
     if (!meetup) return res.status(404).json({ success: false, message: 'Meetup not found' });
-    
+    res.json({ success: true, data: meetup });
     res.json({ success: true, data: ensureStartAt(meetup) });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });

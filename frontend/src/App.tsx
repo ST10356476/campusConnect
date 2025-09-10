@@ -269,7 +269,7 @@ function App() {
                 </div>
               )}
 
-              {/* Demo hint */}
+              {/* Demo hint. */}
               <div className="mt-8 inline-flex items-center bg-gradient-to-r from-blue-100 to-purple-100 rounded-full px-6 py-3 border border-blue-200">
                 <span className="text-sm text-gray-700">
                   💡 <strong>Ready to start?</strong> Create your account to join the community!
